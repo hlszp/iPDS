@@ -1,0 +1,15 @@
+:root {
+  --bg: #0f1923; --surface: #182533; --border: #253545;
+  --text: #d0d8e0; --text-dim: #708090; --accent: #f0a030;
+  --green: #2ecc71; --blue: #3498db; --yellow: #f1c40f;
+  --red: #e74c3c; --gray: #7f8c8d;
+  --sidebar-w: 220px; --radius: 6px;
+  --font-sm: 11px; --font-md: 13px; --font-lg: 16px; --font-xl: 32px;
+}
+*,*::before,*::after{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); font-size:var(--font-md); line-height:1.5; }
+#root{ display:flex; height:100vh; overflow:hidden; }
+a{ color:var(--accent); text-decoration:none; }
+button{ cursor:pointer; font-family:inherit; }
+input,select{ font-family:inherit; font-size:var(--font-md); }
+::-webkit-scrollbar{ width:6px; } ::-webkit-scrollbar-track{ background:transparent; } ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:3px; }

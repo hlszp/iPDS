@@ -32,3 +32,6 @@ docker-compose.override.yml
 # gstack (personal, not project)
 .gstack/
 .omc/
+
+# Frontend build output
+frontend/dist/
