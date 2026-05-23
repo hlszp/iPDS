@@ -4,13 +4,36 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
 
+from .config.features import FeatureFlag, load_features
 from .config.settings import settings
 from .data.database import SessionLocal, engine
 from .models.loop import Base
 from .models.user import Base as UserBase, User
-from .routers import auth as auth_router, config as config_router
+from .routers import auth as auth_router, config as config_router, reports as reports_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    UserBase.metadata.create_all(bind=engine)
+    FeatureFlag.__table__.create(bind=engine, checkfirst=True)
+    _seed_admin()
+    _seed_features()
+    yield
+
+
+def _seed_features():
+    db = SessionLocal()
+    try:
+        defaults = {"assessment": True, "diagnosis": True, "identification": True, "tuning": True, "simulation": True, "reporting": True}
+        for key, enabled in defaults.items():
+            if not db.query(FeatureFlag).filter(FeatureFlag.key == key).first():
+                db.add(FeatureFlag(key=key, enabled=enabled))
+        db.commit()
+        load_features(db)
+    finally:
+        db.close()
 
 
 @asynccontextmanager
@@ -49,6 +72,7 @@ app.add_middleware(
 
 app.include_router(auth_router.router)
 app.include_router(config_router.router)
+app.include_router(reports_router.router)
 
 
 @app.get("/api/health")

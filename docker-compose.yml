@@ -1,0 +1,28 @@
+# PDS — Docker Compose deployment
+# Usage: docker compose up -d
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - pds_data:/app/data
+      - pds_config:/app/pds_config.db
+    environment:
+      - PDS_DEBUG=false
+      - PDS_JWT_SECRET=${PDS_JWT_SECRET:-change-me-in-production}
+      - PDS_TDENGINE_HOST=${PDS_TDENGINE_HOST:-localhost}
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pds_data:
+  pds_config:

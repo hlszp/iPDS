@@ -35,3 +35,6 @@ docker-compose.override.yml
 
 # Frontend build output
 frontend/dist/
+
+# SQLite databases
+*.db
