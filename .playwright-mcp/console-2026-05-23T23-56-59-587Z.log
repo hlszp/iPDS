@@ -1,0 +1,62 @@
+[      45ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:21550
+[      85ms] TypeError: Cannot read properties of undefined (reading 'then')
+    at http://127.0.0.1:5173/src/pages/Config/index.jsx?t=1779580598033:35:14
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:16915:34)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:18156:19)
+    at commitPassiveMountEffects_complete (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:18129:17)
+    at commitPassiveMountEffects_begin (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:18119:15)
+    at commitPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:18109:11)
+    at flushPassiveEffectsImpl (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:19490:11)
+    at flushPassiveEffects (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:19447:22)
+    at http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:19328:17
+    at workLoop (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:197:42)
+[      55ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=0b915cfa:4435
+[      55ms] [WARNING] ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath. @ http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=0b915cfa:4435
+[      86ms] TypeError: Cannot read properties of undefined (reading 'then')
+    at http://127.0.0.1:5173/src/pages/Config/index.jsx?t=1779580598033:35:14
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:16915:34)
+    at invokePassiveEffectMountInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:18324:19)
+    at invokeEffectsInDev (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:19701:19)
+    at commitDoubleInvokeEffectsInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:19686:15)
+    at flushPassiveEffectsImpl (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:19503:13)
+    at flushPassiveEffects (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:19447:22)
+    at http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:19328:17
+    at workLoop (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:197:42)
+    at flushWork (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:176:22)
+[      56ms] [ERROR] The above error occurred in the <Config> component:
+
+    at Config (http://127.0.0.1:5173/src/pages/Config/index.jsx?t=1779580598033:24:29)
+    at RenderedRoute (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=0b915cfa:4131:5)
+    at Routes (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=0b915cfa:4601:5)
+    at main
+    at Layout (http://127.0.0.1:5173/src/components/Layout.jsx?t=1779579132779:27:34)
+    at App (http://127.0.0.1:5173/src/App.jsx?t=1779580598033:32:29)
+    at Router (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=0b915cfa:4544:15)
+    at BrowserRouter (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=0b915cfa:5290:5)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:14031
+[      56ms] [ERROR] The above error occurred in the <Config> component:
+
+    at Config (http://127.0.0.1:5173/src/pages/Config/index.jsx?t=1779580598033:24:29)
+    at RenderedRoute (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=0b915cfa:4131:5)
+    at Routes (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=0b915cfa:4601:5)
+    at main
+    at Layout (http://127.0.0.1:5173/src/components/Layout.jsx?t=1779579132779:27:34)
+    at App (http://127.0.0.1:5173/src/App.jsx?t=1779580598033:32:29)
+    at Router (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=0b915cfa:4544:15)
+    at BrowserRouter (http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=0b915cfa:5290:5)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:14031
+[      86ms] TypeError: Cannot read properties of undefined (reading 'then')
+    at http://127.0.0.1:5173/src/pages/Config/index.jsx?t=1779580598033:35:14
+    at commitHookEffectListMount (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:16915:34)
+    at commitPassiveMountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:18156:19)
+    at commitPassiveMountEffects_complete (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:18129:17)
+    at commitPassiveMountEffects_begin (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:18119:15)
+    at commitPassiveMountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:18109:11)
+    at flushPassiveEffectsImpl (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:19490:11)
+    at flushPassiveEffects (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:19447:22)
+    at http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:19328:17
+    at workLoop (http://127.0.0.1:5173/node_modules/.vite/deps/chunk-PJEEZAML.js?v=67376fd3:197:42)

@@ -1,0 +1,313 @@
+- generic [ref=e2]:
+  - complementary [ref=e12]:
+    - generic [ref=e13]: PDS 驾驶舱
+    - navigation [ref=e15]:
+      - link "◫ 驾驶舱" [ref=e16] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e17]: ◫
+        - generic [ref=e18]: 驾驶舱
+      - link "☰ 回路管理" [ref=e19] [cursor=pointer]:
+        - /url: /config
+        - generic [ref=e20]: ☰
+        - generic [ref=e21]: 回路管理
+      - link "⚙ 整定工作台" [ref=e22] [cursor=pointer]:
+        - /url: /tuning
+        - generic [ref=e23]: ⚙
+        - generic [ref=e24]: 整定工作台
+      - link "▤ 评估报告" [ref=e25] [cursor=pointer]:
+        - /url: /reports
+        - generic [ref=e26]: ▤
+        - generic [ref=e27]: 评估报告
+      - link "⇧ 投运管理" [ref=e28] [cursor=pointer]:
+        - /url: /commissioning
+        - generic [ref=e29]: ⇧
+        - generic [ref=e30]: 投运管理
+      - link "◉ 系统设置" [ref=e31] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e32]: ◉
+        - generic [ref=e33]: 系统设置
+    - generic [ref=e34]:
+      - generic [ref=e35]: 管
+      - generic [ref=e36]: 管理员
+      - button "退出" [ref=e37] [cursor=pointer]
+  - main [ref=e38]:
+    - generic [ref=e39]:
+      - generic [ref=e40] [cursor=pointer]:
+        - generic [ref=e41]: 全厂自控率
+        - generic [ref=e42]: 19%
+        - generic [ref=e43]: 目标 ≥ 95% !
+      - generic [ref=e44] [cursor=pointer]:
+        - generic [ref=e45]: 控制平稳率
+        - generic [ref=e46]: 4.8%
+        - generic [ref=e47]: 较上周 +0.5%
+      - generic [ref=e48] [cursor=pointer]:
+        - generic [ref=e49]: 问题回路
+        - generic [ref=e50]: "17"
+        - generic [ref=e51]: 评级「差」+「开环」
+      - generic [ref=e52] [cursor=pointer]:
+        - generic [ref=e53]: 今日报警次数
+        - generic [ref=e54]: 1,247
+        - generic [ref=e55]: 较昨日 −142
+    - generic [ref=e56]:
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - generic [ref=e59]: 装置回路健康总览
+          - generic [ref=e60] [cursor=pointer]: 周报 ▾
+        - table [ref=e63]:
+          - rowgroup [ref=e64]:
+            - row "装置 优 良 中 差 开环" [ref=e65]:
+              - columnheader "装置" [ref=e66]
+              - columnheader "优" [ref=e67]
+              - columnheader "良" [ref=e68]
+              - columnheader "中" [ref=e69]
+              - columnheader "差" [ref=e70]
+              - columnheader "开环" [ref=e71]
+          - rowgroup [ref=e72]:
+            - row "CO 分离及压缩 0 0 0 1 0" [ref=e73]:
+              - cell "CO 分离及压缩" [ref=e74]
+              - cell "0" [ref=e75]:
+                - button "0" [disabled] [ref=e76]
+              - cell "0" [ref=e77]:
+                - button "0" [disabled] [ref=e78]
+              - cell "0" [ref=e79]:
+                - button "0" [disabled] [ref=e80]
+              - cell "1" [ref=e81]:
+                - button "1" [ref=e82] [cursor=pointer]
+              - cell "0" [ref=e83]:
+                - button "0" [disabled] [ref=e84]
+            - row "PSA 制氢 0 0 1 2 0" [ref=e85]:
+              - cell "PSA 制氢" [ref=e86]
+              - cell "0" [ref=e87]:
+                - button "0" [disabled] [ref=e88]
+              - cell "0" [ref=e89]:
+                - button "0" [disabled] [ref=e90]
+              - cell "1" [ref=e91]:
+                - button "1" [ref=e92] [cursor=pointer]
+              - cell "2" [ref=e93]:
+                - button "2" [ref=e94] [cursor=pointer]
+              - cell "0" [ref=e95]:
+                - button "0" [disabled] [ref=e96]
+            - row "低温甲醇洗 0 0 1 1 0" [ref=e97]:
+              - cell "低温甲醇洗" [ref=e98]
+              - cell "0" [ref=e99]:
+                - button "0" [disabled] [ref=e100]
+              - cell "0" [ref=e101]:
+                - button "0" [disabled] [ref=e102]
+              - cell "1" [ref=e103]:
+                - button "1" [ref=e104] [cursor=pointer]
+              - cell "1" [ref=e105]:
+                - button "1" [ref=e106] [cursor=pointer]
+              - cell "0" [ref=e107]:
+                - button "0" [disabled] [ref=e108]
+            - row "冷冻站 0 1 0 1 0" [ref=e109]:
+              - cell "冷冻站" [ref=e110]
+              - cell "0" [ref=e111]:
+                - button "0" [disabled] [ref=e112]
+              - cell "1" [ref=e113]:
+                - button "1" [ref=e114] [cursor=pointer]
+              - cell "0" [ref=e115]:
+                - button "0" [disabled] [ref=e116]
+              - cell "1" [ref=e117]:
+                - button "1" [ref=e118] [cursor=pointer]
+              - cell "0" [ref=e119]:
+                - button "0" [disabled] [ref=e120]
+            - row "变换及热回收 0 0 1 0 0" [ref=e121]:
+              - cell "变换及热回收" [ref=e122]
+              - cell "0" [ref=e123]:
+                - button "0" [disabled] [ref=e124]
+              - cell "0" [ref=e125]:
+                - button "0" [disabled] [ref=e126]
+              - cell "1" [ref=e127]:
+                - button "1" [ref=e128] [cursor=pointer]
+              - cell "0" [ref=e129]:
+                - button "0" [disabled] [ref=e130]
+              - cell "0" [ref=e131]:
+                - button "0" [disabled] [ref=e132]
+            - row "气化 0 0 0 2 0" [ref=e133]:
+              - cell "气化" [ref=e134]
+              - cell "0" [ref=e135]:
+                - button "0" [disabled] [ref=e136]
+              - cell "0" [ref=e137]:
+                - button "0" [disabled] [ref=e138]
+              - cell "0" [ref=e139]:
+                - button "0" [disabled] [ref=e140]
+              - cell "2" [ref=e141]:
+                - button "2" [ref=e142] [cursor=pointer]
+              - cell "0" [ref=e143]:
+                - button "0" [disabled] [ref=e144]
+            - row "氨合成 0 0 0 3 0" [ref=e145]:
+              - cell "氨合成" [ref=e146]
+              - cell "0" [ref=e147]:
+                - button "0" [disabled] [ref=e148]
+              - cell "0" [ref=e149]:
+                - button "0" [disabled] [ref=e150]
+              - cell "0" [ref=e151]:
+                - button "0" [disabled] [ref=e152]
+              - cell "3" [ref=e153]:
+                - button "3" [ref=e154] [cursor=pointer]
+              - cell "0" [ref=e155]:
+                - button "0" [disabled] [ref=e156]
+            - row "液氮洗 0 0 0 1 0" [ref=e157]:
+              - cell "液氮洗" [ref=e158]
+              - cell "0" [ref=e159]:
+                - button "0" [disabled] [ref=e160]
+              - cell "0" [ref=e161]:
+                - button "0" [disabled] [ref=e162]
+              - cell "0" [ref=e163]:
+                - button "0" [disabled] [ref=e164]
+              - cell "1" [ref=e165]:
+                - button "1" [ref=e166] [cursor=pointer]
+              - cell "0" [ref=e167]:
+                - button "0" [disabled] [ref=e168]
+            - row "甲醇装置 0 0 0 4 0" [ref=e169]:
+              - cell "甲醇装置" [ref=e170]
+              - cell "0" [ref=e171]:
+                - button "0" [disabled] [ref=e172]
+              - cell "0" [ref=e173]:
+                - button "0" [disabled] [ref=e174]
+              - cell "0" [ref=e175]:
+                - button "0" [disabled] [ref=e176]
+              - cell "4" [ref=e177]:
+                - button "4" [ref=e178] [cursor=pointer]
+              - cell "0" [ref=e179]:
+                - button "0" [disabled] [ref=e180]
+            - row "硫回收制酸 0 0 0 1 0" [ref=e181]:
+              - cell "硫回收制酸" [ref=e182]
+              - cell "0" [ref=e183]:
+                - button "0" [disabled] [ref=e184]
+              - cell "0" [ref=e185]:
+                - button "0" [disabled] [ref=e186]
+              - cell "0" [ref=e187]:
+                - button "0" [disabled] [ref=e188]
+              - cell "1" [ref=e189]:
+                - button "1" [ref=e190] [cursor=pointer]
+              - cell "0" [ref=e191]:
+                - button "0" [disabled] [ref=e192]
+            - row "醋酸装置 0 0 0 1 0" [ref=e193]:
+              - cell "醋酸装置" [ref=e194]
+              - cell "0" [ref=e195]:
+                - button "0" [disabled] [ref=e196]
+              - cell "0" [ref=e197]:
+                - button "0" [disabled] [ref=e198]
+              - cell "0" [ref=e199]:
+                - button "0" [disabled] [ref=e200]
+              - cell "1" [ref=e201]:
+                - button "1" [ref=e202] [cursor=pointer]
+              - cell "0" [ref=e203]:
+                - button "0" [disabled] [ref=e204]
+      - generic [ref=e205]:
+        - generic [ref=e206]:
+          - generic [ref=e207]: Top 10 问题回路
+          - generic [ref=e208] [cursor=pointer]: 查看全部 →
+        - table [ref=e210]:
+          - rowgroup [ref=e211]:
+            - row "# 位号 装置 评级 主要故障 问题权重" [ref=e212]:
+              - columnheader "#" [ref=e213]
+              - columnheader "位号" [ref=e214]
+              - columnheader "装置" [ref=e215]
+              - columnheader "评级" [ref=e216]
+              - columnheader "主要故障" [ref=e217]
+              - columnheader "问题权重" [ref=e218]
+          - rowgroup [ref=e219]:
+            - row "1 PIC-20015 PSA 制氢 差 4" [ref=e220] [cursor=pointer]:
+              - cell "1" [ref=e221]
+              - cell "PIC-20015" [ref=e222]
+              - cell "PSA 制氢" [ref=e223]
+              - cell "差" [ref=e224]: 差
+              - cell [ref=e226]
+              - cell "4" [ref=e227]:
+                - generic [ref=e230]: "4"
+            - row "2 PIC-50020 气化 差 非线性 4" [ref=e231] [cursor=pointer]:
+              - cell "2" [ref=e232]
+              - cell "PIC-50020" [ref=e233]
+              - cell "气化" [ref=e234]
+              - cell "差" [ref=e235]: 差
+              - cell "非线性" [ref=e237]:
+                - generic [ref=e238]: 非线性
+              - cell "4" [ref=e239]:
+                - generic [ref=e242]: "4"
+            - row "3 FIC-50011 气化 差 4" [ref=e243] [cursor=pointer]:
+              - cell "3" [ref=e244]
+              - cell "FIC-50011" [ref=e245]
+              - cell "气化" [ref=e246]
+              - cell "差" [ref=e247]: 差
+              - cell [ref=e249]
+              - cell "4" [ref=e250]:
+                - generic [ref=e253]: "4"
+            - row "4 TIC-40008 低温甲醇洗 差 3" [ref=e254] [cursor=pointer]:
+              - cell "4" [ref=e255]
+              - cell "TIC-40008" [ref=e256]
+              - cell "低温甲醇洗" [ref=e257]
+              - cell "差" [ref=e258]: 差
+              - cell [ref=e260]
+              - cell "3" [ref=e261]:
+                - generic [ref=e264]: "3"
+            - row "5 TIC-91001 硫回收制酸 差 3" [ref=e265] [cursor=pointer]:
+              - cell "5" [ref=e266]
+              - cell "TIC-91001" [ref=e267]
+              - cell "硫回收制酸" [ref=e268]
+              - cell "差" [ref=e269]: 差
+              - cell [ref=e271]
+              - cell "3" [ref=e272]:
+                - generic [ref=e275]: "3"
+            - row "6 TIC-80002 氨合成 差 非线性 3" [ref=e276] [cursor=pointer]:
+              - cell "6" [ref=e277]
+              - cell "TIC-80002" [ref=e278]
+              - cell "氨合成" [ref=e279]
+              - cell "差" [ref=e280]: 差
+              - cell "非线性" [ref=e282]:
+                - generic [ref=e283]: 非线性
+              - cell "3" [ref=e284]:
+                - generic [ref=e287]: "3"
+            - row "7 PIC-30050 氨合成 差 3" [ref=e288] [cursor=pointer]:
+              - cell "7" [ref=e289]
+              - cell "PIC-30050" [ref=e290]
+              - cell "氨合成" [ref=e291]
+              - cell "差" [ref=e292]: 差
+              - cell [ref=e294]
+              - cell "3" [ref=e295]:
+                - generic [ref=e298]: "3"
+            - row "8 FIC-93001 液氮洗 差 3" [ref=e299] [cursor=pointer]:
+              - cell "8" [ref=e300]
+              - cell "FIC-93001" [ref=e301]
+              - cell "液氮洗" [ref=e302]
+              - cell "差" [ref=e303]: 差
+              - cell [ref=e305]
+              - cell "3" [ref=e306]:
+                - generic [ref=e309]: "3"
+            - row "9 TIC-61001 甲醇装置 差 非线性 3" [ref=e310] [cursor=pointer]:
+              - cell "9" [ref=e311]
+              - cell "TIC-61001" [ref=e312]
+              - cell "甲醇装置" [ref=e313]
+              - cell "差" [ref=e314]: 差
+              - cell "非线性" [ref=e316]:
+                - generic [ref=e317]: 非线性
+              - cell "3" [ref=e318]:
+                - generic [ref=e321]: "3"
+            - row "10 PIC-60033 甲醇装置 差 2" [ref=e322] [cursor=pointer]:
+              - cell "10" [ref=e323]
+              - cell "PIC-60033" [ref=e324]
+              - cell "甲醇装置" [ref=e325]
+              - cell "差" [ref=e326]: 差
+              - cell [ref=e328]
+              - cell "2" [ref=e329]:
+                - generic [ref=e332]: "2"
+      - generic [ref=e334]:
+        - generic [ref=e335]: 自控率趋势（近30天）
+        - generic [ref=e336] [cursor=pointer]: 装置对比 ▾
+      - generic [ref=e341]:
+        - generic [ref=e342]:
+          - generic [ref=e343]: 最近告警与操作
+          - generic [ref=e344] [cursor=pointer]: 全部 →
+        - generic [ref=e346]:
+          - generic [ref=e347]:
+            - generic [ref=e348]: ● 09:00
+            - text: 全厂日评估报告已生成
+          - generic [ref=e349]:
+            - generic [ref=e350]: ✓ 11:15
+            - text: PIC-20015 完成PID整定（演示数据）
+            - generic [ref=e351]: "方法: IMC | Kc=2.3 Ti=0.45"
+    - generic [ref=e352]:
+      - generic [ref=e353]: "数据更新: 2026/5/24 09:25:05"
+      - generic [ref=e355]: "评估引擎: 运行中"
+      - generic [ref=e357]: "下一批次: 明天 06:00"

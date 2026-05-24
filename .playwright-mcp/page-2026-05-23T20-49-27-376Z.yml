@@ -1,0 +1,75 @@
+- generic [ref=e2]:
+  - complementary [ref=e12]:
+    - generic [ref=e13]: PDS 驾驶舱
+    - navigation [ref=e15]:
+      - link "全厂概览 1200" [ref=e16] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e17]: 全厂概览
+        - generic [ref=e18]: "1200"
+      - link "气化 16" [ref=e19] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e20]: 气化
+        - generic [ref=e21]: "16"
+      - link "变换及热回收 48" [ref=e22] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e23]: 变换及热回收
+        - generic [ref=e24]: "48"
+      - link "低温甲醇洗 40" [ref=e25] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e26]: 低温甲醇洗
+        - generic [ref=e27]: "40"
+      - link "液氮洗 24" [ref=e28] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e29]: 液氮洗
+        - generic [ref=e30]: "24"
+      - link "氨合成 24" [ref=e31] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e32]: 氨合成
+        - generic [ref=e33]: "24"
+      - link "PSA 制氢 48" [ref=e34] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e35]: PSA 制氢
+        - generic [ref=e36]: "48"
+      - link "CO 分离及压缩 64" [ref=e37] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e38]: CO 分离及压缩
+        - generic [ref=e39]: "64"
+      - link "硫回收制酸 40" [ref=e40] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e41]: 硫回收制酸
+        - generic [ref=e42]: "40"
+      - link "冷冻站 24" [ref=e43] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e44]: 冷冻站
+        - generic [ref=e45]: "24"
+      - link "甲醇装置 32" [ref=e46] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e47]: 甲醇装置
+        - generic [ref=e48]: "32"
+      - link "醋酸装置 32" [ref=e49] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e50]: 醋酸装置
+        - generic [ref=e51]: "32"
+    - generic [ref=e52]:
+      - generic [ref=e53]: 管
+      - generic [ref=e54]: 管理员
+      - button "退出" [ref=e55] [cursor=pointer]
+  - main [ref=e56]:
+    - generic [ref=e409]:
+      - generic [ref=e410]:
+        - button "← 返回详情" [ref=e411] [cursor=pointer]
+        - heading "FIC-10023 · PID 整定工作台" [level=2] [ref=e412]
+      - generic [ref=e413]:
+        - generic [ref=e414]:
+          - heading "整定方法" [level=3] [ref=e415]
+          - generic [ref=e416] [cursor=pointer]:
+            - radio "IMC 标准整定" [checked] [ref=e417]
+            - generic [ref=e418]: IMC 标准整定
+          - generic [ref=e419] [cursor=pointer]:
+            - radio "Lambda 保守整定" [ref=e420]
+            - generic [ref=e421]: Lambda 保守整定
+          - generic [ref=e422] [cursor=pointer]:
+            - radio "IMC 激进整定" [ref=e423]
+            - generic [ref=e424]: IMC 激进整定
+          - button "计算 PID 参数" [ref=e425] [cursor=pointer]
+        - generic [ref=e427]: 闭环仿真预览

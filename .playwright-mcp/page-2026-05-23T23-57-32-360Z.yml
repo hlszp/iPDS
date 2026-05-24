@@ -1,0 +1,214 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]: PDS 驾驶舱
+    - navigation [ref=e6]:
+      - link "◫ 驾驶舱" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: ◫
+        - generic [ref=e9]: 驾驶舱
+      - link "☰ 回路管理" [ref=e10] [cursor=pointer]:
+        - /url: /config
+        - generic [ref=e11]: ☰
+        - generic [ref=e12]: 回路管理
+      - link "⚙ 整定工作台" [ref=e13] [cursor=pointer]:
+        - /url: /tuning
+        - generic [ref=e14]: ⚙
+        - generic [ref=e15]: 整定工作台
+      - link "▤ 评估报告" [ref=e16] [cursor=pointer]:
+        - /url: /reports
+        - generic [ref=e17]: ▤
+        - generic [ref=e18]: 评估报告
+      - link "⇧ 投运管理" [ref=e19] [cursor=pointer]:
+        - /url: /commissioning
+        - generic [ref=e20]: ⇧
+        - generic [ref=e21]: 投运管理
+      - link "◉ 系统设置" [ref=e22] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e23]: ◉
+        - generic [ref=e24]: 系统设置
+    - generic [ref=e25]:
+      - generic [ref=e26]: 管
+      - generic [ref=e27]: 管理员
+      - button "退出" [ref=e28] [cursor=pointer]
+  - main [ref=e29]:
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - heading "回路配置管理" [level=2] [ref=e32]
+        - button "+ 新增回路" [ref=e33] [cursor=pointer]
+      - table [ref=e34]:
+        - rowgroup [ref=e35]:
+          - row "位号 装置 类型 描述 操作" [ref=e36]:
+            - columnheader "位号" [ref=e37]
+            - columnheader "装置" [ref=e38]
+            - columnheader "类型" [ref=e39]
+            - columnheader "描述" [ref=e40]
+            - columnheader "操作" [ref=e41]
+        - rowgroup [ref=e42]:
+          - row "FIC-10023 甲醇装置 FLOW 甲醇进料流量 编辑 删除" [ref=e43]:
+            - cell "FIC-10023" [ref=e44]
+            - cell "甲醇装置" [ref=e45]
+            - cell "FLOW" [ref=e46]
+            - cell "甲醇进料流量" [ref=e47]
+            - cell "编辑 删除" [ref=e48]:
+              - button "编辑" [ref=e49] [cursor=pointer]
+              - button "删除" [ref=e50] [cursor=pointer]
+          - row "PIC-60033 甲醇装置 PRESSURE 合成塔压力 编辑 删除" [ref=e51]:
+            - cell "PIC-60033" [ref=e52]
+            - cell "甲醇装置" [ref=e53]
+            - cell "PRESSURE" [ref=e54]
+            - cell "合成塔压力" [ref=e55]
+            - cell "编辑 删除" [ref=e56]:
+              - button "编辑" [ref=e57] [cursor=pointer]
+              - button "删除" [ref=e58] [cursor=pointer]
+          - row "TIC-61001 甲醇装置 TEMP 反应器温度 编辑 删除" [ref=e59]:
+            - cell "TIC-61001" [ref=e60]
+            - cell "甲醇装置" [ref=e61]
+            - cell "TEMP" [ref=e62]
+            - cell "反应器温度" [ref=e63]
+            - cell "编辑 删除" [ref=e64]:
+              - button "编辑" [ref=e65] [cursor=pointer]
+              - button "删除" [ref=e66] [cursor=pointer]
+          - row "LIC-61002 甲醇装置 LEVEL 分离器液位 编辑 删除" [ref=e67]:
+            - cell "LIC-61002" [ref=e68]
+            - cell "甲醇装置" [ref=e69]
+            - cell "LEVEL" [ref=e70]
+            - cell "分离器液位" [ref=e71]
+            - cell "编辑 删除" [ref=e72]:
+              - button "编辑" [ref=e73] [cursor=pointer]
+              - button "删除" [ref=e74] [cursor=pointer]
+          - row "PIC-20015 PSA 制氢 PRESSURE 吸附塔压力 编辑 删除" [ref=e75]:
+            - cell "PIC-20015" [ref=e76]
+            - cell "PSA 制氢" [ref=e77]
+            - cell "PRESSURE" [ref=e78]
+            - cell "吸附塔压力" [ref=e79]
+            - cell "编辑 删除" [ref=e80]:
+              - button "编辑" [ref=e81] [cursor=pointer]
+              - button "删除" [ref=e82] [cursor=pointer]
+          - row "FIC-20020 PSA 制氢 FLOW 氢气产品流量 编辑 删除" [ref=e83]:
+            - cell "FIC-20020" [ref=e84]
+            - cell "PSA 制氢" [ref=e85]
+            - cell "FLOW" [ref=e86]
+            - cell "氢气产品流量" [ref=e87]
+            - cell "编辑 删除" [ref=e88]:
+              - button "编辑" [ref=e89] [cursor=pointer]
+              - button "删除" [ref=e90] [cursor=pointer]
+          - row "LIC-70019 PSA 制氢 LEVEL 缓冲罐液位 编辑 删除" [ref=e91]:
+            - cell "LIC-70019" [ref=e92]
+            - cell "PSA 制氢" [ref=e93]
+            - cell "LEVEL" [ref=e94]
+            - cell "缓冲罐液位" [ref=e95]
+            - cell "编辑 删除" [ref=e96]:
+              - button "编辑" [ref=e97] [cursor=pointer]
+              - button "删除" [ref=e98] [cursor=pointer]
+          - row "LIC-30042 氨合成 LEVEL 氨分离器液位 编辑 删除" [ref=e99]:
+            - cell "LIC-30042" [ref=e100]
+            - cell "氨合成" [ref=e101]
+            - cell "LEVEL" [ref=e102]
+            - cell "氨分离器液位" [ref=e103]
+            - cell "编辑 删除" [ref=e104]:
+              - button "编辑" [ref=e105] [cursor=pointer]
+              - button "删除" [ref=e106] [cursor=pointer]
+          - row "TIC-80002 氨合成 TEMP 合成塔温度 编辑 删除" [ref=e107]:
+            - cell "TIC-80002" [ref=e108]
+            - cell "氨合成" [ref=e109]
+            - cell "TEMP" [ref=e110]
+            - cell "合成塔温度" [ref=e111]
+            - cell "编辑 删除" [ref=e112]:
+              - button "编辑" [ref=e113] [cursor=pointer]
+              - button "删除" [ref=e114] [cursor=pointer]
+          - row "PIC-30050 氨合成 PRESSURE 循环气压力 编辑 删除" [ref=e115]:
+            - cell "PIC-30050" [ref=e116]
+            - cell "氨合成" [ref=e117]
+            - cell "PRESSURE" [ref=e118]
+            - cell "循环气压力" [ref=e119]
+            - cell "编辑 删除" [ref=e120]:
+              - button "编辑" [ref=e121] [cursor=pointer]
+              - button "删除" [ref=e122] [cursor=pointer]
+          - row "TIC-40008 低温甲醇洗 TEMP 甲醇温度 编辑 删除" [ref=e123]:
+            - cell "TIC-40008" [ref=e124]
+            - cell "低温甲醇洗" [ref=e125]
+            - cell "TEMP" [ref=e126]
+            - cell "甲醇温度" [ref=e127]
+            - cell "编辑 删除" [ref=e128]:
+              - button "编辑" [ref=e129] [cursor=pointer]
+              - button "删除" [ref=e130] [cursor=pointer]
+          - row "FIC-40012 低温甲醇洗 FLOW 甲醇循环流量 编辑 删除" [ref=e131]:
+            - cell "FIC-40012" [ref=e132]
+            - cell "低温甲醇洗" [ref=e133]
+            - cell "FLOW" [ref=e134]
+            - cell "甲醇循环流量" [ref=e135]
+            - cell "编辑 删除" [ref=e136]:
+              - button "编辑" [ref=e137] [cursor=pointer]
+              - button "删除" [ref=e138] [cursor=pointer]
+          - row "FIC-50011 气化 FLOW 氧气流量 编辑 删除" [ref=e139]:
+            - cell "FIC-50011" [ref=e140]
+            - cell "气化" [ref=e141]
+            - cell "FLOW" [ref=e142]
+            - cell "氧气流量" [ref=e143]
+            - cell "编辑 删除" [ref=e144]:
+              - button "编辑" [ref=e145] [cursor=pointer]
+              - button "删除" [ref=e146] [cursor=pointer]
+          - row "PIC-50020 气化 PRESSURE 气化炉压力 编辑 删除" [ref=e147]:
+            - cell "PIC-50020" [ref=e148]
+            - cell "气化" [ref=e149]
+            - cell "PRESSURE" [ref=e150]
+            - cell "气化炉压力" [ref=e151]
+            - cell "编辑 删除" [ref=e152]:
+              - button "编辑" [ref=e153] [cursor=pointer]
+              - button "删除" [ref=e154] [cursor=pointer]
+          - row "FIC-90001 冷冻站 FLOW 冷冻水流量 编辑 删除" [ref=e155]:
+            - cell "FIC-90001" [ref=e156]
+            - cell "冷冻站" [ref=e157]
+            - cell "FLOW" [ref=e158]
+            - cell "冷冻水流量" [ref=e159]
+            - cell "编辑 删除" [ref=e160]:
+              - button "编辑" [ref=e161] [cursor=pointer]
+              - button "删除" [ref=e162] [cursor=pointer]
+          - row "PIC-90002 冷冻站 PRESSURE 冷冻水压力 编辑 删除" [ref=e163]:
+            - cell "PIC-90002" [ref=e164]
+            - cell "冷冻站" [ref=e165]
+            - cell "PRESSURE" [ref=e166]
+            - cell "冷冻水压力" [ref=e167]
+            - cell "编辑 删除" [ref=e168]:
+              - button "编辑" [ref=e169] [cursor=pointer]
+              - button "删除" [ref=e170] [cursor=pointer]
+          - row "TIC-91001 硫回收制酸 TEMP 焚烧炉温度 编辑 删除" [ref=e171]:
+            - cell "TIC-91001" [ref=e172]
+            - cell "硫回收制酸" [ref=e173]
+            - cell "TEMP" [ref=e174]
+            - cell "焚烧炉温度" [ref=e175]
+            - cell "编辑 删除" [ref=e176]:
+              - button "编辑" [ref=e177] [cursor=pointer]
+              - button "删除" [ref=e178] [cursor=pointer]
+          - row "LIC-92001 CO 分离及压缩 LEVEL 分离器液位 编辑 删除" [ref=e179]:
+            - cell "LIC-92001" [ref=e180]
+            - cell "CO 分离及压缩" [ref=e181]
+            - cell "LEVEL" [ref=e182]
+            - cell "分离器液位" [ref=e183]
+            - cell "编辑 删除" [ref=e184]:
+              - button "编辑" [ref=e185] [cursor=pointer]
+              - button "删除" [ref=e186] [cursor=pointer]
+          - row "FIC-93001 液氮洗 FLOW 氮气流量 编辑 删除" [ref=e187]:
+            - cell "FIC-93001" [ref=e188]
+            - cell "液氮洗" [ref=e189]
+            - cell "FLOW" [ref=e190]
+            - cell "氮气流量" [ref=e191]
+            - cell "编辑 删除" [ref=e192]:
+              - button "编辑" [ref=e193] [cursor=pointer]
+              - button "删除" [ref=e194] [cursor=pointer]
+          - row "FIC-94001 变换及热回收 FLOW 变换气流量 编辑 删除" [ref=e195]:
+            - cell "FIC-94001" [ref=e196]
+            - cell "变换及热回收" [ref=e197]
+            - cell "FLOW" [ref=e198]
+            - cell "变换气流量" [ref=e199]
+            - cell "编辑 删除" [ref=e200]:
+              - button "编辑" [ref=e201] [cursor=pointer]
+              - button "删除" [ref=e202] [cursor=pointer]
+          - row "PIC-95001 醋酸装置 PRESSURE 反应器压力 编辑 删除" [ref=e203]:
+            - cell "PIC-95001" [ref=e204]
+            - cell "醋酸装置" [ref=e205]
+            - cell "PRESSURE" [ref=e206]
+            - cell "反应器压力" [ref=e207]
+            - cell "编辑 删除" [ref=e208]:
+              - button "编辑" [ref=e209] [cursor=pointer]
+              - button "删除" [ref=e210] [cursor=pointer]

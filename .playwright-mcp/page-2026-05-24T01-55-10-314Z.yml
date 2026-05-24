@@ -1,0 +1,78 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]: PDS 驾驶舱
+    - navigation [ref=e6]:
+      - link "◫ 驾驶舱" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: ◫
+        - generic [ref=e9]: 驾驶舱
+      - link "☰ 回路管理" [ref=e10] [cursor=pointer]:
+        - /url: /config
+        - generic [ref=e11]: ☰
+        - generic [ref=e12]: 回路管理
+      - link "⚙ 整定工作台" [ref=e13] [cursor=pointer]:
+        - /url: /tuning
+        - generic [ref=e14]: ⚙
+        - generic [ref=e15]: 整定工作台
+      - link "▤ 评估报告" [ref=e16] [cursor=pointer]:
+        - /url: /reports
+        - generic [ref=e17]: ▤
+        - generic [ref=e18]: 评估报告
+      - link "⇧ 投运管理" [ref=e19] [cursor=pointer]:
+        - /url: /commissioning
+        - generic [ref=e20]: ⇧
+        - generic [ref=e21]: 投运管理
+      - link "◉ 系统设置" [ref=e22] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e23]: ◉
+        - generic [ref=e24]: 系统设置
+    - generic [ref=e25]:
+      - generic [ref=e26]: 管
+      - generic [ref=e27]: 管理员
+      - button "退出" [ref=e28] [cursor=pointer]
+  - main [ref=e29]:
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - button "← 返回驾驶舱" [ref=e32] [cursor=pointer]
+        - heading "PIC-20015" [level=2] [ref=e33]
+        - generic [ref=e34]: PSA 制氢 · 吸附塔压力
+        - button "PID 整定" [ref=e35] [cursor=pointer]
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - generic [ref=e39]: 自控率
+            - generic [ref=e40]: 100.0%
+          - generic [ref=e41]:
+            - generic [ref=e42]: 平稳率
+            - generic [ref=e43]: 0.1%
+          - generic [ref=e44]:
+            - generic [ref=e45]: 性能评分
+            - generic [ref=e46]: "52.8"
+          - generic [ref=e47]:
+            - generic [ref=e48]: 评级
+            - generic [ref=e49]: 差
+        - generic [ref=e50]:
+          - heading "故障诊断" [level=3] [ref=e51]
+          - generic [ref=e52]:
+            - generic [ref=e53]:
+              - generic [ref=e54]: 阀门粘滞
+              - generic [ref=e55]: 未检测
+            - generic [ref=e56]:
+              - generic [ref=e57]: 振荡
+              - generic [ref=e58]: 未检测
+            - generic [ref=e59]:
+              - generic [ref=e60]: 非线性度
+              - generic [ref=e61]: "0.034"
+            - generic [ref=e62]:
+              - generic [ref=e63]: 回路耦合
+              - generic [ref=e64]: 无
+          - generic [ref=e65]: 诊断结果按粘滞、振荡、非线性和耦合四类特征综合排序。置信度越高，代表当前趋势数据越符合该类故障特征；耦合项用于提示可能需要联合排查相关回路。
+        - generic [ref=e67]: 趋势图（近3小时）
+        - generic [ref=e71]:
+          - heading "回路信息" [level=3] [ref=e72]
+          - generic [ref=e73]:
+            - generic [ref=e74]: "位号: PIC-20015"
+            - generic [ref=e75]: "装置: PSA 制氢"
+            - generic [ref=e76]: "描述: 吸附塔压力"
+            - generic [ref=e77]: "PV位号: PIC-20015.PV | SP位号: PIC-20015.SP | OP位号: PIC-20015.OP"
+            - generic [ref=e78]: "量程: — | 采样周期: 1s | 死区时间: ~4s"

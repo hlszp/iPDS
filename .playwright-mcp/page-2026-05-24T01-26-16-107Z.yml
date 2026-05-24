@@ -1,0 +1,82 @@
+- generic [ref=e2]:
+  - complementary [ref=e12]:
+    - generic [ref=e13]: PDS 驾驶舱
+    - navigation [ref=e15]:
+      - link "◫ 驾驶舱" [ref=e16] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e17]: ◫
+        - generic [ref=e18]: 驾驶舱
+      - link "☰ 回路管理" [ref=e19] [cursor=pointer]:
+        - /url: /config
+        - generic [ref=e20]: ☰
+        - generic [ref=e21]: 回路管理
+      - link "⚙ 整定工作台" [ref=e22] [cursor=pointer]:
+        - /url: /tuning
+        - generic [ref=e23]: ⚙
+        - generic [ref=e24]: 整定工作台
+      - link "▤ 评估报告" [ref=e25] [cursor=pointer]:
+        - /url: /reports
+        - generic [ref=e26]: ▤
+        - generic [ref=e27]: 评估报告
+      - link "⇧ 投运管理" [ref=e28] [cursor=pointer]:
+        - /url: /commissioning
+        - generic [ref=e29]: ⇧
+        - generic [ref=e30]: 投运管理
+      - link "◉ 系统设置" [ref=e31] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e32]: ◉
+        - generic [ref=e33]: 系统设置
+    - generic [ref=e34]:
+      - generic [ref=e35]: 管
+      - generic [ref=e36]: 管理员
+      - button "退出" [ref=e37] [cursor=pointer]
+  - main [ref=e38]:
+    - generic [ref=e358]:
+      - generic [ref=e359]:
+        - generic [ref=e360]:
+          - heading "回路配置管理" [level=2] [ref=e361]
+          - generic [ref=e362]: 当前按装置筛选：甲醇装置 · 来自 差 评热力图
+        - generic [ref=e363]:
+          - button "查看全部" [ref=e364] [cursor=pointer]
+          - button "+ 新增回路" [ref=e365] [cursor=pointer]
+      - table [ref=e366]:
+        - rowgroup [ref=e367]:
+          - row "位号 装置 类型 描述 操作" [ref=e368]:
+            - columnheader "位号" [ref=e369]
+            - columnheader "装置" [ref=e370]
+            - columnheader "类型" [ref=e371]
+            - columnheader "描述" [ref=e372]
+            - columnheader "操作" [ref=e373]
+        - rowgroup [ref=e374]:
+          - row "FIC-10023 甲醇装置 FLOW 甲醇进料流量 编辑 删除" [ref=e375]:
+            - cell "FIC-10023" [ref=e376]
+            - cell "甲醇装置" [ref=e377]
+            - cell "FLOW" [ref=e378]
+            - cell "甲醇进料流量" [ref=e379]
+            - cell "编辑 删除" [ref=e380]:
+              - button "编辑" [ref=e381] [cursor=pointer]
+              - button "删除" [ref=e382] [cursor=pointer]
+          - row "PIC-60033 甲醇装置 PRESSURE 合成塔压力 编辑 删除" [ref=e383]:
+            - cell "PIC-60033" [ref=e384]
+            - cell "甲醇装置" [ref=e385]
+            - cell "PRESSURE" [ref=e386]
+            - cell "合成塔压力" [ref=e387]
+            - cell "编辑 删除" [ref=e388]:
+              - button "编辑" [ref=e389] [cursor=pointer]
+              - button "删除" [ref=e390] [cursor=pointer]
+          - row "TIC-61001 甲醇装置 TEMP 反应器温度 编辑 删除" [ref=e391]:
+            - cell "TIC-61001" [ref=e392]
+            - cell "甲醇装置" [ref=e393]
+            - cell "TEMP" [ref=e394]
+            - cell "反应器温度" [ref=e395]
+            - cell "编辑 删除" [ref=e396]:
+              - button "编辑" [ref=e397] [cursor=pointer]
+              - button "删除" [ref=e398] [cursor=pointer]
+          - row "LIC-61002 甲醇装置 LEVEL 分离器液位 编辑 删除" [ref=e399]:
+            - cell "LIC-61002" [ref=e400]
+            - cell "甲醇装置" [ref=e401]
+            - cell "LEVEL" [ref=e402]
+            - cell "分离器液位" [ref=e403]
+            - cell "编辑 删除" [ref=e404]:
+              - button "编辑" [ref=e405] [cursor=pointer]
+              - button "删除" [ref=e406] [cursor=pointer]

@@ -1,0 +1,58 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]: PDS 驾驶舱
+    - navigation [ref=e6]:
+      - link "◫ 驾驶舱" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: ◫
+        - generic [ref=e9]: 驾驶舱
+      - link "☰ 回路管理" [ref=e10] [cursor=pointer]:
+        - /url: /config
+        - generic [ref=e11]: ☰
+        - generic [ref=e12]: 回路管理
+      - link "⚙ 整定工作台" [ref=e13] [cursor=pointer]:
+        - /url: /tuning
+        - generic [ref=e14]: ⚙
+        - generic [ref=e15]: 整定工作台
+      - link "▤ 评估报告" [ref=e16] [cursor=pointer]:
+        - /url: /reports
+        - generic [ref=e17]: ▤
+        - generic [ref=e18]: 评估报告
+      - link "⇧ 投运管理" [ref=e19] [cursor=pointer]:
+        - /url: /commissioning
+        - generic [ref=e20]: ⇧
+        - generic [ref=e21]: 投运管理
+      - link "◉ 系统设置" [ref=e22] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e23]: ◉
+        - generic [ref=e24]: 系统设置
+    - generic [ref=e25]:
+      - generic [ref=e26]: 管
+      - generic [ref=e27]: 管理员
+      - button "退出" [ref=e28] [cursor=pointer]
+  - main [ref=e29]:
+    - generic [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e38]: 装置回路健康总览
+        - generic [ref=e40]:
+          - generic [ref=e41]: 加载失败
+          - generic [ref=e42]: Not Found
+          - button "重试" [ref=e43] [cursor=pointer]
+      - generic [ref=e44]:
+        - generic [ref=e46]: Top 10 问题回路
+        - generic [ref=e48]:
+          - generic [ref=e49]: 加载失败
+          - generic [ref=e50]: Not Found
+          - button "重试" [ref=e51] [cursor=pointer]
+      - generic [ref=e52]:
+        - generic [ref=e54]: 自控率趋势（近30天）
+        - generic [ref=e56]:
+          - generic [ref=e57]: 加载失败
+          - generic [ref=e58]: Not Found
+          - button "重试" [ref=e59] [cursor=pointer]
+      - generic [ref=e60]:
+        - generic [ref=e62]: 最近告警与操作
+        - generic [ref=e64]:
+          - generic [ref=e65]: 加载失败
+          - generic [ref=e66]: Not Found
+          - button "重试" [ref=e67] [cursor=pointer]

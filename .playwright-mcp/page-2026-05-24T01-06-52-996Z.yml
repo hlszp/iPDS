@@ -1,0 +1,8 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - heading "PDS 驾驶舱" [level=1] [ref=e7]
+    - paragraph [ref=e8]: PID性能评估与整定系统
+  - generic [ref=e12]: 用户名或密码错误
+  - textbox "用户名" [ref=e9]: admin
+  - textbox "密码" [ref=e10]: admin123
+  - button "登 录" [active] [ref=e11] [cursor=pointer]

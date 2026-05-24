@@ -1,0 +1,57 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]: PDS 驾驶舱
+    - navigation [ref=e6]:
+      - link "全厂概览 1200" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: 全厂概览
+        - generic [ref=e9]: "1200"
+      - link "气化 16" [ref=e10] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e11]: 气化
+        - generic [ref=e12]: "16"
+      - link "变换及热回收 48" [ref=e13] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e14]: 变换及热回收
+        - generic [ref=e15]: "48"
+      - link "低温甲醇洗 40" [ref=e16] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e17]: 低温甲醇洗
+        - generic [ref=e18]: "40"
+      - link "液氮洗 24" [ref=e19] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e20]: 液氮洗
+        - generic [ref=e21]: "24"
+      - link "氨合成 24" [ref=e22] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e23]: 氨合成
+        - generic [ref=e24]: "24"
+      - link "PSA 制氢 48" [ref=e25] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e26]: PSA 制氢
+        - generic [ref=e27]: "48"
+      - link "CO 分离及压缩 64" [ref=e28] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e29]: CO 分离及压缩
+        - generic [ref=e30]: "64"
+      - link "硫回收制酸 40" [ref=e31] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e32]: 硫回收制酸
+        - generic [ref=e33]: "40"
+      - link "冷冻站 24" [ref=e34] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e35]: 冷冻站
+        - generic [ref=e36]: "24"
+      - link "甲醇装置 32" [ref=e37] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e38]: 甲醇装置
+        - generic [ref=e39]: "32"
+      - link "醋酸装置 32" [ref=e40] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e41]: 醋酸装置
+        - generic [ref=e42]: "32"
+    - generic [ref=e43]:
+      - generic [ref=e44]: 管
+      - generic [ref=e45]: 管理员
+      - button "退出" [ref=e46] [cursor=pointer]
+  - main [ref=e47]
