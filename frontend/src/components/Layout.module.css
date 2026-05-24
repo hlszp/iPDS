@@ -1,11 +1,12 @@
 .sidebar{ width:var(--sidebar-w); background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
 .logo{ padding:16px; font-size:var(--font-lg); font-weight:700; color:#fff; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
 .dot{ width:10px; height:10px; border-radius:50%; background:var(--accent); }
-.tree{ flex:1; overflow-y:auto; padding:4px 0; }
-.item{ padding:7px 16px; cursor:pointer; font-size:var(--font-md); border-left:3px solid transparent; display:flex; justify-content:space-between; align-items:center; text-decoration:none; color:var(--text); }
+.nav{ flex:1; overflow-y:auto; padding:4px 0; }
+.item{ padding:9px 16px; cursor:pointer; font-size:var(--font-md); border-left:3px solid transparent; display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--text); }
 .item:hover{ background:rgba(255,255,255,0.04); }
 .active{ background:rgba(240,160,48,0.1); border-left-color:var(--accent); color:#fff; }
-.badge{ font-size:var(--font-sm); padding:1px 7px; border-radius:8px; background:rgba(255,255,255,0.08); min-width:28px; text-align:center; }
+.icon{ font-size:var(--font-md); width:20px; text-align:center; opacity:0.7; }
+.active .icon{ opacity:1; }
 .footer{ padding:10px 16px; border-top:1px solid var(--border); font-size:var(--font-sm); color:var(--text-dim); display:flex; align-items:center; gap:6px; }
 .avatar{ width:24px; height:24px; border-radius:50%; background:var(--accent); color:#000; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:var(--font-sm); }
 .logout{ margin-left:auto; background:none; border:1px solid var(--border); color:var(--text-dim); padding:2px 8px; border-radius:4px; font-size:var(--font-sm); }

@@ -3,7 +3,7 @@ import { useState } from 'react';
 const GRADES = ['优','良','中','差','开环'];
 const CSS = ['hmA','hmB','hmC','hmD','hmE'];
 
-export default function Heatmap({ data }) {
+export default function Heatmap({ data, onCellClick }) {
   const [tip, setTip] = useState(null);
 
   return (
@@ -16,15 +16,18 @@ export default function Heatmap({ data }) {
             return <tr key={unit}>
               <td style={{padding:'4px 8px',color:'var(--text-dim)'}}>{unit}</td>
               {vals.map((v,i)=>(
-                <td key={i}><div
+                <td key={i}><button
+                  type="button"
                   className={CSS[i]}
-                  style={{display:'flex',alignItems:'center',justifyContent:'center',padding:'6px 4px',borderRadius:4,cursor:'pointer',fontSize:'var(--font-sm)',fontWeight:600,
+                  style={{display:'flex',alignItems:'center',justifyContent:'center',width:'100%',padding:'6px 4px',borderRadius:4,cursor:v > 0 ? 'pointer' : 'default',fontSize:'var(--font-sm)',fontWeight:600,
                     background:i===0?'rgba(46,204,113,0.25)':i===1?'rgba(52,152,219,0.25)':i===2?'rgba(241,196,15,0.2)':i===3?'rgba(231,76,60,0.25)':'rgba(127,140,141,0.15)',
-                    color:i===0?'var(--green)':i===1?'var(--blue)':i===2?'var(--yellow)':i===3?'var(--red)':'var(--gray)'}}
-                  onMouseEnter={e=>setTip({x:e.clientX+12,y:e.clientY-40,unit,grade:GRADES[i],count:v,pct:(v/total*100).toFixed(1)})}
+                    color:i===0?'var(--green)':i===1?'var(--blue)':i===2?'var(--yellow)':i===3?'var(--red)':'var(--gray)', border:'none'}}
+                  onMouseEnter={e=>setTip({x:e.clientX+12,y:e.clientY-40,unit,grade:GRADES[i],count:v,pct:total > 0 ? (v/total*100).toFixed(1) : '0.0'})}
                   onMouseMove={e=>setTip(t=>({...t,x:e.clientX+12,y:e.clientY-40}))}
                   onMouseLeave={()=>setTip(null)}
-                >{v}</div></td>
+                  onClick={() => v > 0 && onCellClick?.(unit, GRADES[i])}
+                  disabled={v === 0}
+                >{v}</button></td>
               ))}
             </tr>;
           })}

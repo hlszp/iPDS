@@ -1,18 +1,26 @@
 import { NavLink } from 'react-router-dom';
 import styles from './Layout.module.css';
 
-const UNITS = ['全厂概览','气化','变换及热回收','低温甲醇洗','液氮洗','氨合成','PSA 制氢','CO 分离及压缩','硫回收制酸','冷冻站','甲醇装置','醋酸装置'];
+const NAV_ITEMS = [
+  { key: 'dashboard', label: '驾驶舱', path: '/', icon: '◫' },
+  { key: 'config', label: '回路管理', path: '/config', icon: '☰' },
+  { key: 'tuning', label: '整定工作台', path: '/tuning', icon: '⚙' },
+  { key: 'reports', label: '评估报告', path: '/reports', icon: '▤' },
+  { key: 'commissioning', label: '投运管理', path: '/commissioning', icon: '⇧' },
+  { key: 'settings', label: '系统设置', path: '/settings', icon: '◉' },
+];
 
 export default function Layout({ user, onLogout, children }) {
   return (
     <>
       <aside className={styles.sidebar}>
         <div className={styles.logo}><span className={styles.dot} />PDS 驾驶舱</div>
-        <nav className={styles.tree}>
-          {UNITS.map(u => (
-            <NavLink key={u} to="/" className={({isActive}) => `${styles.item} ${isActive ? styles.active : ''}`}>
-              <span>{u}</span>
-              <span className={styles.badge}>{u==='全厂概览'?1200:u.length*8}</span>
+        <nav className={styles.nav}>
+          {NAV_ITEMS.map(item => (
+            <NavLink key={item.key} to={item.path} end={item.path === '/'}
+              className={({isActive}) => `${styles.item} ${isActive ? styles.active : ''}`}>
+              <span className={styles.icon}>{item.icon}</span>
+              <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>

@@ -16,3 +16,10 @@ class TokenResponse(BaseModel):
     username: str
     role: str
     display_name: Optional[str] = None
+
+
+class UserSummary(BaseModel):
+    username: str
+    role: str
+    display_name: Optional[str] = None
+    created_at: Optional[str] = None

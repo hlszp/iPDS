@@ -11,8 +11,8 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from ..data.database import SessionLocal
-from ..models.loop import LoopTag
+from ...data.database import SessionLocal
+from ...models.loop import LoopTag
 
 
 def import_from_csv(path: Path, unit: str) -> dict:

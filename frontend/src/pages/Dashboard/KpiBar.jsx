@@ -1,6 +1,6 @@
 import styles from './Dashboard.module.css';
 
-export default function KpiBar({ autoRate, stabilityRate, problems }) {
+export default function KpiBar({ autoRate, stabilityRate, problems, alarms }) {
   const ok = parseFloat(autoRate) >= 95;
   return (
     <div className={styles.kpiBar}>
@@ -21,7 +21,7 @@ export default function KpiBar({ autoRate, stabilityRate, problems }) {
       </div>
       <div className={styles.kpiCard}>
         <div className={styles.kpiLabel}>今日报警次数</div>
-        <div className={styles.kpiValue}>1,247</div>
+        <div className={styles.kpiValue}>{alarms != null ? alarms.toLocaleString() : '—'}</div>
         <div className={styles.kpiTarget}>较昨日 −142</div>
       </div>
     </div>
