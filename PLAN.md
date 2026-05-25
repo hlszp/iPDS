@@ -291,6 +291,24 @@ The current repo already contains enough product surface to prove the wedge: das
 | Outside voice coverage | Claude subagent only |
 | Critical concern | Adoption/trust risk exceeds feature breadth risk |
 
+## 2026-05-25 对标使用手册补齐 (commit b10f2b8)
+
+对照《控制回路性能评估分析软件使用手册》，完成 5 模块基础架构：
+
+| 模块 | 页面 | API |
+|------|------|-----|
+| **总览** | Overview — 工厂树 + 自控率仪表盘 + KPI + 详情表 | `/api/overview/summary` |
+| **监控** | Monitoring — 实时/历史双tab | `/api/monitoring/realtime` + `/history` |
+| **评估** | Assessment — 筛选列表 + AssessmentDetail — 雷达图+诊断建议 | `/api/assessment/realtime|radar|suggestions` |
+| **报表** | Reports — 保留原有 PDF 功能 | — |
+| **配置** | Config — 保留原有回路CRUD | `/api/plants/tree` 层级树 |
+| **大屏** | LargeScreenToggle — CSS 切换 | — |
+
+**新增模型**: Plant, Device（厂→装置→回路组→回路 4 级层级）
+**新增服务**: diagnosis/suggestions.py（诊断→建议映射）
+**新增组件**: SortableTable, RadarChart, PlantTree, AutoControlGauge, LargeScreenMode
+
+**待补齐**: OPC数据接口配置UI、报表日/月/年tab、APScheduler定时报表、回路指标阈值配置UI
 
 <!-- AUTONOMOUS DECISION LOG -->
 ## Decision Audit Trail
