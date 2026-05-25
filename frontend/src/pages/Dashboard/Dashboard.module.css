@@ -13,12 +13,19 @@
 .kpiTarget{ font-size:var(--font-sm); color:var(--text-dim); margin-top:2px; }
 .good .kpiValue{ color:var(--green); }
 .warn .kpiValue{ color:var(--accent); }
-.setupBanner{ margin:12px 20px 0; padding:14px 16px; border:1px solid rgba(240,160,48,0.35); border-radius:8px; background:rgba(240,160,48,0.08); display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.setupBanner{ margin:12px 20px 0; padding:14px 16px; border:1px solid rgba(240,160,48,0.35); border-radius:8px; background:rgba(240,160,48,0.08); display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.setupBody{ flex:1; min-width:0; display:flex; flex-direction:column; gap:12px; }
 .setupTitle{ color:#fff; font-size:var(--font-md); font-weight:600; margin-bottom:4px; }
 .setupText{ color:var(--text-dim); font-size:var(--font-sm); }
+.setupError{ margin-top:4px; color:var(--red); font-size:var(--font-sm); }
 .setupActions{ display:flex; gap:8px; flex-shrink:0; }
 .setupPrimary,.retryBtn{ padding:8px 14px; border:none; border-radius:4px; background:var(--accent); color:#000; font-size:var(--font-sm); font-weight:600; cursor:pointer; }
 .setupSecondary{ padding:8px 14px; border:1px solid var(--border); border-radius:4px; background:none; color:var(--text); font-size:var(--font-sm); cursor:pointer; }
+.warningList{ display:flex; flex-wrap:wrap; gap:8px; }
+.warningItem{ padding:8px 10px; border:1px solid rgba(240,160,48,0.3); border-radius:6px; background:rgba(255,255,255,0.03); color:var(--text); font-size:var(--font-sm); display:flex; gap:8px; align-items:center; cursor:pointer; }
+.warningItem:hover{ border-color:var(--accent); background:rgba(240,160,48,0.12); }
+.warningTag{ color:#fff; font-weight:600; }
+.warningIssue{ color:var(--text-dim); }
 .panelState{ min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:8px; color:var(--text-dim); }
 .panelStateTitle{ color:#fff; font-size:var(--font-md); font-weight:600; }
 .panelStateText{ max-width:320px; line-height:1.6; }

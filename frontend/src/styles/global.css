@@ -13,3 +13,8 @@ a{ color:var(--accent); text-decoration:none; }
 button{ cursor:pointer; font-family:inherit; }
 input,select{ font-family:inherit; font-size:var(--font-md); }
 ::-webkit-scrollbar{ width:6px; } ::-webkit-scrollbar-track{ background:transparent; } ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:3px; }
+
+/* Large screen display mode */
+.large-screen { --font-xl:48px;--font-lg:24px;--font-md:18px;--font-sm:14px; }
+.large-screen aside { display:none !important; }
+.large-screen main { padding:32px !important; }

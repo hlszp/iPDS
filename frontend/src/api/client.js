@@ -9,6 +9,15 @@ async function parseError(res) {
   }
 }
 
+function withQuery(path, params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') query.append(key, value);
+  });
+  const qs = query.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
 async function request(path, options = {}) {
   const token = localStorage.getItem('pds_token');
   const headers = { 'Content-Type': 'application/json', ...options.headers };
@@ -37,15 +46,19 @@ export const api = {
   listUsers: () => request('/auth/users'),
 
   // Config
-  listLoops: (params = {}) => request('/config/loops?' + new URLSearchParams(params)),
+  listLoops: (params = {}) => request(withQuery('/config/loops', params)),
   getLoop: (tag) => request(`/config/loops/${tag}`),
   createLoop: (data) => request('/config/loops', { method: 'POST', body: JSON.stringify(data) }),
   updateLoop: (tag, data) => request(`/config/loops/${tag}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteLoop: (tag) => request(`/config/loops/${tag}`, { method: 'DELETE' }),
+  listGroups: (params = {}) => request(withQuery('/config/groups', params)),
+  createGroup: (data) => request('/config/groups', { method: 'POST', body: JSON.stringify(data) }),
+  deleteGroup: (id) => request(`/config/groups/${id}`, { method: 'DELETE' }),
 
   // Loop data (engine endpoints)
   getDashboard: () => request('/loop/dashboard'),
   getLoopDetail: (tag) => request(`/loop/${tag}/detail`),
+  getLoopHistory: (tag, params = {}) => request(withQuery(`/loop/${tag}/history`, params)),
   getExcitation: (tag) => request(`/loop/${tag}/excitation`),
   runTuning: (tag, method, desiredTau) => request(`/loop/${tag}/tuning`, {
     method: 'POST',
@@ -59,8 +72,8 @@ export const api = {
     form.append('file', file);
     return requestFile(`/commissioning/import?unit=${encodeURIComponent(unit)}`, { method: 'POST', body: form });
   },
-  validateLoops: (unit) => request(`/commissioning/validate${unit ? '?unit=' + encodeURIComponent(unit) : ''}`),
-  getCommissioningReadiness: (unit) => request(`/commissioning/readiness${unit ? '?unit=' + encodeURIComponent(unit) : ''}`),
+  validateLoops: (unit) => request(withQuery('/commissioning/validate', { unit })),
+  getCommissioningReadiness: (unit) => request(withQuery('/commissioning/readiness', { unit })),
 
   // Features
   listFeatures: () => request('/features'),
@@ -69,4 +82,25 @@ export const api = {
   // Reports
   generateLoopReport: (tag) => requestFile(`/reports/loop/${tag}`),
   generateBatchReport: (unit, period) => requestFile(`/reports/batch?unit=${encodeURIComponent(unit || '全厂')}&period=${encodeURIComponent(period || '日报')}`),
+
+  // Plant & Device hierarchy
+  getPlantTree: () => request('/plants/tree'),
+  listPlants: () => request('/plants'),
+  createPlant: (data) => request('/plants', { method: 'POST', body: JSON.stringify(data) }),
+  updatePlant: (id, data) => request(`/plants/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePlant: (id) => request(`/plants/${id}`, { method: 'DELETE' }),
+  listDevices: (plantId) => request(`/plants/${plantId}/devices`),
+  createDevice: (plantId, data) => request(`/plants/${plantId}/devices`, { method: 'POST', body: JSON.stringify(data) }),
+  updateDevice: (id, data) => request(`/devices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteDevice: (id) => request(`/devices/${id}`, { method: 'DELETE' }),
+
+  // Overview & Monitoring
+  getOverview: (params = {}) => request(withQuery('/overview/summary', params)),
+  getMonitoringRealtime: (params = {}) => request(withQuery('/monitoring/realtime', params)),
+  getMonitoringHistory: (params = {}) => request(withQuery('/monitoring/history', params)),
+
+  // Assessment
+  getAssessmentRealtime: (params = {}) => request(withQuery('/assessment/realtime', params)),
+  getRadar: (tag) => request(`/assessment/${tag}/radar`),
+  getSuggestions: (tag) => request(`/assessment/${tag}/suggestions`),
 };

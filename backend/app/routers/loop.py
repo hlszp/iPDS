@@ -16,6 +16,7 @@ from ..models.loop_schemas import (
     DiagnosisOut,
     Event,
     ExcitationCheckResponse,
+    HistoryTrendResponse,
     IdentificationOut,
     LoopDetailResponse,
     PIDParamsOut,
@@ -62,6 +63,9 @@ def _to_assessment_out(a: LoopAssessment) -> AssessmentOut:
         self_control_rate=a.self_control_rate,
         stability_rate=a.stability_rate,
         performance_score=a.performance_score,
+        accuracy_rate=a.accuracy_rate,
+        fast_rate=a.fast_rate,
+        effective_auto_rate=a.effective_auto_rate,
         grade=a.grade,
         iae=a.iae,
         oscillation_index=a.oscillation_index,
@@ -70,6 +74,22 @@ def _to_assessment_out(a: LoopAssessment) -> AssessmentOut:
         operation_frequency=a.operation_frequency,
         nonlinearity_degree=a.nonlinearity_degree,
         reference_time=a.reference_time,
+    )
+
+
+def _slice_trend(ld, max_points: int = 200) -> StepResponseOut:
+    t0 = ld.timestamps[0] if ld.timestamps else None
+    if t0:
+        time_labels = [int((t - t0).total_seconds()) for t in ld.timestamps]
+    else:
+        time_labels = list(range(len(ld.pv)))
+
+    step = max(1, len(ld.pv) // max_points)
+    return StepResponseOut(
+        time=time_labels[::step][:max_points],
+        pv=ld.pv[::step][:max_points],
+        sp=ld.sp[::step][:max_points],
+        op=ld.op[::step][:max_points],
     )
 
 
@@ -243,18 +263,45 @@ def loop_detail(tag_name: str, db: Session = Depends(get_db)):
         assessment=_to_assessment_out(assessment),
         diagnosis=DiagnosisOut(
             tag_name=diagnosis.tag_name,
-            stiction_detected=diagnosis.stiction_detected,
+            stiction_detected=bool(diagnosis.stiction_detected),
             stiction_confidence=diagnosis.stiction_confidence,
-            oscillation_detected=diagnosis.oscillation_detected,
+            oscillation_detected=bool(diagnosis.oscillation_detected),
             oscillation_period=diagnosis.oscillation_period,
             oscillation_confidence=diagnosis.oscillation_confidence,
-            nonlinearity_detected=diagnosis.nonlinearity_detected,
+            nonlinearity_detected=bool(diagnosis.nonlinearity_detected),
             nonlinearity_degree=diagnosis.nonlinearity_degree,
             coupling_candidates=diagnosis.coupling_candidates,
             coupling_strength=diagnosis.coupling_strength,
+            settling_time=diagnosis.settling_time,
+            travel_index=diagnosis.travel_index,
+            good_rate=diagnosis.good_rate,
             primary_fault=diagnosis.primary_fault,
         ),
         trend=StepResponseOut(time=t_sliced, pv=pv_sliced, sp=sp_sliced, op=op_sliced),
+    )
+
+
+@router.get("/{tag_name}/history", response_model=HistoryTrendResponse)
+def loop_history(
+    tag_name: str,
+    hours: float = Query(24, ge=1, le=168),
+    playback_step: int = Query(5, ge=1, le=60),
+    db: Session = Depends(get_db),
+):
+    loop = db.query(LoopTag).filter(LoopTag.tag_name == tag_name).first()
+    if not loop:
+        raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found in config")
+
+    ld = get_loop_data(tag_name, hours=hours, seed=42)
+    if ld is None:
+        raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found in preset configs")
+
+    trend = _slice_trend(ld, max_points=max(60, min(600, int(hours * 3600 / playback_step))))
+    return HistoryTrendResponse(
+        tag_name=tag_name,
+        hours=hours,
+        playback_step=playback_step,
+        trend=trend,
     )
 
 

@@ -14,12 +14,13 @@ from ..services.reporting.engine import _WEASYPRINT, generate_batch_report, gene
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
 _MEDIA = "application/pdf" if _WEASYPRINT else "text/html; charset=utf-8"
+_EXTENSION = "pdf" if _WEASYPRINT else "html"
 
 
 def _safe_filename(name: str) -> str:
     """Encode non-ASCII filename per RFC 5987."""
     ascii_name = "".join(c for c in name if c.isascii() and c.isalnum() or c in "_-.")
-    return f"{ascii_name}.pdf" if ascii_name else "report.pdf"
+    return f"{ascii_name}.{_EXTENSION}" if ascii_name else f"report.{_EXTENSION}"
 
 
 def _encode_content_disposition(filename: str) -> str:
@@ -27,6 +28,13 @@ def _encode_content_disposition(filename: str) -> str:
     safe = _safe_filename(filename)
     encoded = quote(filename, safe="")
     return f'attachment; filename="{safe}"; filename*=UTF-8\'\'{encoded}'
+
+
+def _report_headers(filename: str) -> dict[str, str]:
+    return {
+        "Content-Disposition": _encode_content_disposition(filename),
+        "X-Report-Format": _EXTENSION,
+    }
 
 
 @router.get("/loop/{tag_name}")
@@ -47,8 +55,9 @@ def report_loop(tag_name: str, user=Depends(get_current_user)):
 
         pdf = generate_loop_report(assessment=assessment, diagnosis=diagnosis)
         return Response(
-            content=pdf, media_type=_MEDIA,
-            headers={"Content-Disposition": _encode_content_disposition(f"{tag_name}_评估报告.pdf")},
+            content=pdf,
+            media_type=_MEDIA,
+            headers=_report_headers(f"{tag_name}_评估报告"),
         )
     except HTTPException:
         raise
@@ -82,8 +91,9 @@ def report_batch(
 
         pdf = generate_batch_report(assessments, unit_name=unit, period=period)
         return Response(
-            content=pdf, media_type=_MEDIA,
-            headers={"Content-Disposition": _encode_content_disposition(f"{unit}_{period}.pdf")},
+            content=pdf,
+            media_type=_MEDIA,
+            headers=_report_headers(f"{unit}_{period}"),
         )
     except HTTPException:
         raise

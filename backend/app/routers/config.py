@@ -1,4 +1,4 @@
-"""Configuration CRUD API — loop tag management."""
+"""Configuration CRUD API — loop tag and loop group management."""
 
 import json
 from typing import Optional
@@ -7,10 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..data.database import get_db
-from ..models.loop import LoopTag
+from ..models.loop import LoopGroup, LoopTag
 from ..models.schemas import LoopTagCreate, LoopTagResponse, LoopTagUpdate
 
 router = APIRouter(prefix="/api/config/loops", tags=["config"])
+
+groups_router = APIRouter(prefix="/api/config/groups", tags=["config"])
 
 
 @router.get("", response_model=list[LoopTagResponse])
@@ -76,6 +78,62 @@ def delete_loop(tag_name: str, db: Session = Depends(get_db)):
     db.commit()
 
 
+@groups_router.get("")
+def list_groups(unit: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    q = db.query(LoopGroup)
+    if unit:
+        q = q.filter(LoopGroup.unit == unit)
+    groups = q.order_by(LoopGroup.unit.asc(), LoopGroup.name.asc()).all()
+    return [
+        {
+            "id": g.id,
+            "name": g.name,
+            "unit": g.unit,
+            "description": g.description,
+            "weight": g.weight,
+            "created_at": g.created_at,
+        }
+        for g in groups
+    ]
+
+
+@groups_router.post("")
+def create_group(payload: dict, db: Session = Depends(get_db)):
+    name = (payload.get("name") or "").strip()
+    unit = (payload.get("unit") or "").strip()
+    if not name or not unit:
+        raise HTTPException(status_code=400, detail="name and unit are required")
+    group = LoopGroup(
+        name=name,
+        unit=unit,
+        description=(payload.get("description") or "").strip() or None,
+        weight=int(payload.get("weight") or 1),
+    )
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+    return {
+        "id": group.id,
+        "name": group.name,
+        "unit": group.unit,
+        "description": group.description,
+        "weight": group.weight,
+        "created_at": group.created_at,
+    }
+
+
+@groups_router.delete("/{group_id}", status_code=204)
+def delete_group(group_id: int, db: Session = Depends(get_db)):
+    group = db.query(LoopGroup).filter(LoopGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="group not found")
+    attached = db.query(LoopTag).filter(LoopTag.loop_group_id == group_id).first()
+    if attached:
+        raise HTTPException(status_code=409, detail="group still has loops attached")
+    db.delete(group)
+    db.commit()
+
+
 def _to_response(loop: LoopTag) -> LoopTagResponse:
     ff = json.loads(loop.feedforward_tags) if loop.feedforward_tags else []
     return LoopTagResponse(
@@ -84,6 +142,9 @@ def _to_response(loop: LoopTag) -> LoopTagResponse:
         unit=loop.unit,
         sub_unit=loop.sub_unit,
         loop_type=loop.loop_type,
+        loop_category=loop.loop_category,
+        loop_weight=loop.loop_weight,
+        loop_group_id=loop.loop_group_id,
         description=loop.description,
         pv_tag=loop.pv_tag,
         sp_tag=loop.sp_tag,

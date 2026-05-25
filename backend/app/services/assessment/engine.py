@@ -14,6 +14,8 @@ from typing import Optional
 
 import numpy as np
 
+from ...models.loop import CATEGORY_WEIGHTS
+
 
 @dataclass
 class LoopAssessment:
@@ -22,6 +24,9 @@ class LoopAssessment:
     self_control_rate: float  # 0-100 percent
     stability_rate: float  # 0-100 percent
     performance_score: float  # 0-100 weighted composite
+    accuracy_rate: float  # 0-100 percent
+    fast_rate: float  # 0-100 percent
+    effective_auto_rate: float  # 0-100 percent
     grade: str  # 优/良/中/差/开环
     iae: float  # Integral Absolute Error (normalized)
     oscillation_index: float  # 0-1, higher = more oscillatory
@@ -30,6 +35,14 @@ class LoopAssessment:
     operation_frequency: float  # mode changes per hour
     nonlinearity_degree: float  # 0-1
     reference_time: str  # assessment window
+    # Manual-named indicators (aligned with 使用手册)
+    oscillation_rate: float = 0.0  # 振荡率 (%)
+    stiction_coefficient: float = 0.0  # 粘滞系数 (0-1)
+    saturation_rate: float = 0.0  # 饱和率 (%)
+    settling_time: Optional[float] = None  # 调节时间 (s)
+    op_travel_index: float = 0.0  # OP行程指数 (0-1)
+    good_value_rate: float = 0.0  # 优良值率 (%)
+    commissioning_rate: float = 100.0  # 投运率 (%)
 
 
 @dataclass
@@ -51,6 +64,7 @@ def assess_loop(
     unit: str = "",
     sample_interval: float = 1.0,
     stability_threshold: float = 2.0,
+    loop_category: str = "稳定型",
 ) -> LoopAssessment:
     """Compute all KPIs for a single loop."""
     pv_a = np.array(pv, dtype=float)
@@ -94,16 +108,20 @@ def assess_loop(
     else:
         nonlinearity_degree = 0.0
 
-    # Weighted performance score (weights per GB/T 44693.2-2024)
-    score = (
-        0.25 * _score_component(stability_rate, 100, True) +
-        0.20 * _score_component(1.0 / (iae + 0.1), 2.0, True) +
-        0.15 * (1.0 - oscillation_index) * 100 +
-        0.15 * (1.0 - valve_saturation_rate) * 100 +
-        0.10 * _score_component(1.0 / (operation_frequency + 0.1), 2.0, True) +
-        0.10 * (1.0 - nonlinearity_degree) * 100 +
-        0.05 * self_control_rate
+    # Weighted performance score aligned to PDF formula: P=[(A*a)+(F*f)+(S*s)]/(a+f+s)*R
+    weights = CATEGORY_WEIGHTS.get(loop_category, CATEGORY_WEIGHTS["稳定型"])
+    accuracy_rate = max(0.0, 100.0 - min(100.0, iae * 50.0))
+    fast_rate = max(0.0, 100.0 - min(100.0, oscillation_index * 100.0))
+    stable_rate_score = stability_rate
+    effective_auto_rate = self_control_rate * (1.0 - valve_saturation_rate)
+
+    numerator = (
+        accuracy_rate * weights["a"] +
+        fast_rate * weights["f"] +
+        stable_rate_score * weights["s"]
     )
+    denominator = weights["a"] + weights["f"] + weights["s"]
+    score = (numerator / denominator) * (effective_auto_rate / 100.0) if denominator > 0 else 0.0
     performance_score = max(0.0, min(100.0, score))
 
     # Grading
@@ -115,6 +133,9 @@ def assess_loop(
         self_control_rate=round(self_control_rate, 1),
         stability_rate=round(stability_rate, 1),
         performance_score=round(performance_score, 1),
+        accuracy_rate=round(accuracy_rate, 1),
+        fast_rate=round(fast_rate, 1),
+        effective_auto_rate=round(effective_auto_rate, 1),
         grade=grade,
         iae=round(iae, 4),
         oscillation_index=round(oscillation_index, 3),
@@ -182,6 +203,8 @@ def _estimate_nonlinearity(pv: np.ndarray, op: np.ndarray) -> float:
         return 0.0
     op_f = op[mask]
     pv_f = pv[mask]
+    if np.ptp(op_f) < 1e-6:
+        return 0.0
     coeffs = np.polyfit(op_f, pv_f, 1)
     linear_pred = np.polyval(coeffs, op_f)
     residuals = np.abs(pv_f - linear_pred)
@@ -207,7 +230,38 @@ def _empty_assessment(tag_name: str, unit: str) -> LoopAssessment:
     return LoopAssessment(
         tag_name=tag_name, unit=unit,
         self_control_rate=0, stability_rate=0, performance_score=0,
+        accuracy_rate=0, fast_rate=0, effective_auto_rate=0,
         grade="开环", iae=0, oscillation_index=0, oscillation_period=None,
         valve_saturation_rate=0, operation_frequency=0, nonlinearity_degree=0,
         reference_time="",
+        oscillation_rate=0, stiction_coefficient=0, saturation_rate=0,
+        settling_time=None, op_travel_index=0, good_value_rate=0, commissioning_rate=0,
     )
+
+
+def assess_full(
+    pv: list[float],
+    sp: list[float],
+    op: list[float],
+    mode: list[str],
+    tag_name: str = "",
+    unit: str = "",
+    sample_interval: float = 1.0,
+    stability_threshold: float = 2.0,
+    loop_category: str = "稳定型",
+) -> LoopAssessment:
+    """Combined assessment + diagnosis indicators in one pass (manual-aligned)."""
+    from ..diagnosis.engine import diagnose_loop
+
+    a = assess_loop(pv, sp, op, mode, tag_name, unit, sample_interval, stability_threshold, loop_category)
+    diag = diagnose_loop(tag_name, pv, sp, op, sample_interval=sample_interval)
+
+    a.oscillation_rate = round(a.oscillation_index * 100, 1)
+    a.stiction_coefficient = round(diag.stiction_confidence, 3)
+    a.saturation_rate = round(a.valve_saturation_rate * 100, 1)
+    a.settling_time = round(diag.settling_time, 1) if diag.settling_time else None
+    a.op_travel_index = round(diag.travel_index, 3)
+    a.good_value_rate = round(diag.good_rate, 1)
+    auto_count = sum(1 for m in mode if m in ("AUTO", "CASCADE"))
+    a.commissioning_rate = round(auto_count / len(mode) * 100, 1) if mode else 100.0
+    return a

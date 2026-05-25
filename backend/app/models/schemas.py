@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class LoopTagCreate(BaseModel):
@@ -12,6 +12,10 @@ class LoopTagCreate(BaseModel):
     unit: str = Field(..., max_length=32)
     sub_unit: Optional[str] = Field(None, max_length=32)
     loop_type: str = Field(..., max_length=16)
+    loop_category: Optional[str] = Field(None, max_length=8)
+    loop_weight: int = 1
+    loop_group_id: Optional[int] = None
+    device_id: Optional[int] = None
     description: Optional[str] = Field(None, max_length=256)
     pv_tag: str = Field(..., max_length=64)
     sp_tag: str = Field(..., max_length=64)
@@ -34,6 +38,10 @@ class LoopTagUpdate(BaseModel):
     unit: Optional[str] = Field(None, max_length=32)
     sub_unit: Optional[str] = Field(None, max_length=32)
     loop_type: Optional[str] = Field(None, max_length=16)
+    loop_category: Optional[str] = Field(None, max_length=8)
+    loop_weight: Optional[int] = None
+    loop_group_id: Optional[int] = None
+    device_id: Optional[int] = None
     description: Optional[str] = Field(None, max_length=256)
     pv_tag: Optional[str] = Field(None, max_length=64)
     sp_tag: Optional[str] = Field(None, max_length=64)
@@ -52,11 +60,17 @@ class LoopTagUpdate(BaseModel):
 
 
 class LoopTagResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     tag_name: str
     unit: str
     sub_unit: Optional[str]
     loop_type: str
+    loop_category: Optional[str]
+    loop_weight: int
+    loop_group_id: Optional[int]
+    device_id: Optional[int]
     description: Optional[str]
     pv_tag: str
     sp_tag: str
@@ -81,6 +95,3 @@ class LoopTagResponse(BaseModel):
         if isinstance(v, str):
             return json.loads(v) if v else []
         return v or []
-
-    class Config:
-        from_attributes = True

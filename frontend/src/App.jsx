@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
 import LoopDetail from './pages/LoopDetail';
 import TuningWorkspace from './pages/TuningWorkspace';
 import TuningSelector from './pages/TuningSelector';
@@ -10,6 +9,10 @@ import Reports from './pages/Reports';
 import Commissioning from './pages/Commissioning';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
+import Overview from './pages/Overview';
+import Monitoring from './pages/Monitoring';
+import Assessment from './pages/Assessment';
+import AssessmentDetail from './pages/Assessment/AssessmentDetail';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('pds_token'));
@@ -26,7 +29,10 @@ export default function App() {
   return (
     <Layout user={user} onLogout={() => { localStorage.clear(); setToken(null); setUser(null); }}>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<Overview />} />
+        <Route path="/monitoring" element={<Monitoring />} />
+        <Route path="/assessment" element={<Assessment />} />
+        <Route path="/assessment/:tagName" element={<AssessmentDetail />} />
         <Route path="/loop/:tagName" element={<LoopDetail />} />
         <Route path="/loop/:tagName/tuning" element={<TuningWorkspace />} />
         <Route path="/config" element={<Config />} />

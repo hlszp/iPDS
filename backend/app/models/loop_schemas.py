@@ -2,15 +2,20 @@
 
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AssessmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     tag_name: str
     unit: str
     self_control_rate: float
     stability_rate: float
     performance_score: float
+    accuracy_rate: float
+    fast_rate: float
+    effective_auto_rate: float
     grade: str
     iae: float
     oscillation_index: float
@@ -20,11 +25,10 @@ class AssessmentOut(BaseModel):
     nonlinearity_degree: float
     reference_time: str
 
-    class Config:
-        from_attributes = True
-
 
 class DiagnosisOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     tag_name: str
     stiction_detected: bool
     stiction_confidence: float
@@ -35,10 +39,10 @@ class DiagnosisOut(BaseModel):
     nonlinearity_degree: float
     coupling_candidates: List[str]
     coupling_strength: float
+    settling_time: Optional[float] = None
+    travel_index: float
+    good_rate: float
     primary_fault: str
-
-    class Config:
-        from_attributes = True
 
 
 class ProcessModelOut(BaseModel):
@@ -84,6 +88,13 @@ class StepResponseOut(BaseModel):
     pv: List[float]
     sp: List[float]
     op: List[float]
+
+
+class HistoryTrendResponse(BaseModel):
+    tag_name: str
+    hours: float
+    playback_step: int
+    trend: StepResponseOut
 
 
 # ── Dashboard ───────────────────────────────────────────────────────────────

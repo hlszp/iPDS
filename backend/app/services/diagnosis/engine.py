@@ -26,6 +26,9 @@ class DiagnosisResult:
     nonlinearity_degree: float  # 0-1
     coupling_candidates: list[str]  # tags of potentially coupled loops
     coupling_strength: float  # 0-1
+    settling_time: Optional[float]  # seconds
+    travel_index: float  # 0-1
+    good_rate: float  # 0-100 percent
     primary_fault: str  # "stiction" / "oscillation" / "nonlinearity" / "coupling" / "none"
 
 
@@ -38,6 +41,7 @@ def diagnose_loop(
     sample_interval: float = 1.0,
 ) -> DiagnosisResult:
     pv_a = np.array(pv, dtype=float)
+    sp_a = np.array(sp, dtype=float)
     op_a = np.array(op, dtype=float)
     n = len(pv_a)
 
@@ -55,6 +59,10 @@ def diagnose_loop(
 
     # 4. Coupling
     coupling_tags, coupling_strength = _detect_coupling(tag_name, pv_a, neighbor_data)
+
+    settling_time = _estimate_settling_time(pv_a, sp_a, sample_interval)
+    travel_index = _estimate_travel_index(op_a)
+    good_rate = _estimate_good_rate(pv_a, sp_a)
 
     # Determine primary fault
     faults = [
@@ -77,6 +85,9 @@ def diagnose_loop(
         nonlinearity_degree=round(nl_degree, 3),
         coupling_candidates=coupling_tags,
         coupling_strength=round(coupling_strength, 3),
+        settling_time=round(settling_time, 1) if settling_time is not None else None,
+        travel_index=round(travel_index, 3),
+        good_rate=round(good_rate, 1),
         primary_fault=primary,
     )
 
@@ -92,7 +103,8 @@ def _detect_stiction(pv: np.ndarray, op: np.ndarray) -> tuple[float, bool]:
     op_moving = np.abs(dop) > np.std(dop) * 0.1
     sticky_fraction = np.sum(pv_flat & op_moving) / len(dpv)
     confidence = min(1.0, sticky_fraction * 5)  # scale up
-    return confidence, confidence > 0.6
+    stiction = bool(confidence > 0.6)
+    return confidence, stiction
 
 
 def _detect_oscillation_diag(pv: np.ndarray, dt: float) -> tuple[float, Optional[float], bool]:
@@ -121,6 +133,8 @@ def _detect_nonlinearity_diag(pv: np.ndarray, op: np.ndarray) -> tuple[float, bo
     if np.sum(mask) < 20:
         return 0.0, False
     op_f, pv_f = op[mask], pv[mask]
+    if np.ptp(op_f) < 1e-6:
+        return 0.0, False
     lin = np.polyfit(op_f, pv_f, 1)
     quad = np.polyfit(op_f, pv_f, 2)
     lin_res = np.sum((np.polyval(lin, op_f) - pv_f) ** 2)
@@ -148,10 +162,41 @@ def _detect_coupling(
     return coupled, max_corr
 
 
+def _estimate_settling_time(pv: np.ndarray, sp: np.ndarray, dt: float) -> Optional[float]:
+    if len(pv) < 10:
+        return None
+    sp_final = float(np.median(sp[-max(5, len(sp) // 10):]))
+    band = max(abs(sp_final) * 0.02, 1e-6)
+    within_band = np.abs(pv - sp_final) <= band
+    for idx in range(len(pv)):
+        if np.all(within_band[idx:]):
+            return idx * dt
+    return None
+
+
+def _estimate_travel_index(op: np.ndarray) -> float:
+    if len(op) < 2:
+        return 0.0
+    travel = np.sum(np.abs(np.diff(op)))
+    span = max(float(np.max(op) - np.min(op)), 1e-6)
+    normalized = travel / (len(op) * span)
+    return min(1.0, max(0.0, float(normalized)))
+
+
+def _estimate_good_rate(pv: np.ndarray, sp: np.ndarray) -> float:
+    if len(pv) == 0:
+        return 0.0
+    error = np.abs(pv - sp)
+    tolerance = np.maximum(np.abs(sp) * 0.02, 1e-6)
+    return float(np.mean(error <= tolerance) * 100)
+
+
 def _empty_diagnosis(tag: str) -> DiagnosisResult:
     return DiagnosisResult(
         tag_name=tag, stiction_detected=False, stiction_confidence=0,
         oscillation_detected=False, oscillation_period=None, oscillation_confidence=0,
         nonlinearity_detected=False, nonlinearity_degree=0,
-        coupling_candidates=[], coupling_strength=0, primary_fault="none",
+        coupling_candidates=[], coupling_strength=0,
+        settling_time=None, travel_index=0, good_rate=0,
+        primary_fault="none",
     )
