@@ -1,17 +1,17 @@
 :root {
   --bg: #0f1923;
-  --bg-soft: #eef2f6;
+  --bg-soft: #e2e8f0;
   --surface: #182533;
   --surface-soft: #ffffff;
   --panel: #ffffff;
   --panel-muted: #f8fafc;
-  --line: #dce4ec;
+  --line: #cbd5e1;
   --border: #253545;
-  --text: #d0d8e0;
+  --text: #334155;
   --text-strong: #172033;
   --text-muted: #344054;
-  --text-subtle: #637083;
-  --text-dim: #708090;
+  --text-subtle: #475569;
+  --text-dim: #64748b;
   --accent: #14b8a6;
   --accent-strong: #0f766e;
   --green: #16a34a;
@@ -27,7 +27,7 @@
   --font-md: 14px;
   --font-lg: 18px;
   --font-xl: 32px;
-  --panel-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+  --panel-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
 html,body,#root{height:100%;}
