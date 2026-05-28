@@ -37,7 +37,7 @@ class LoopConfig:
     # Operating
     sp: float = 50.0
     op_bias: float = 50.0
-    sample_interval: int = 1  # seconds
+    sample_interval: int = 60  # seconds (realistic DCS scan rate)
 
 
 @dataclass
@@ -69,81 +69,78 @@ class LoopData:
 def generate_loop_data(config: LoopConfig, duration_hours: float = 24, seed: int = 42) -> LoopData:
     """Generate synthetic closed-loop PID data with known process characteristics.
 
-    Uses analytic FOPDT simulation: at each step, compute the process response
-    to the current OP using the discretized first-order + dead-time model.
-    A simple PI controller regulates PV to SP.
+    Simulates internally at 1-second steps for numerical stability, then
+    downsamples to the configured sample_interval.
     """
     rng = np.random.default_rng(seed)
-    n = int(duration_hours * 3600 / config.sample_interval)
-    dt = float(config.sample_interval)
+    internal_dt = 1.0  # fine step for stable Euler integration
+    output_interval = max(1, int(config.sample_interval))
+    downsample = max(1, output_interval)
+    total_seconds = int(duration_hours * 3600)
+    n_internal = total_seconds + 1
+    n = n_internal // downsample
+    dt = internal_dt
 
-    pv = np.zeros(n)
-    sp = np.zeros(n)
-    op = np.zeros(n)
-    mode = ["AUTO"] * n
+    pv_int = np.zeros(n_internal)
+    sp_int = np.zeros(n_internal)
+    op_int = np.zeros(n_internal)
 
-    # Generate SP profile: baseline + occasional step changes
-    sp[:] = config.sp
-    n_changes = min(8, max(2, n // 7200))  # ~every 2 hours, more frequent for excitation
-    change_times = sorted(rng.integers(n // 12, max(n // 12 + 1, n - 1800), size=n_changes))
+    # Generate SP profile at internal resolution
+    sp_int[:] = config.sp
+    n_changes = min(8, max(2, n_internal // 7200))
+    change_times = sorted(rng.integers(n_internal // 12, max(n_internal // 12 + 1, n_internal - 1800), size=n_changes))
     current_sp = config.sp
     for ct in change_times:
         current_sp += rng.uniform(-12, 12)
         current_sp = max(5, min(95, current_sp))
-        sp[ct:] = current_sp
+        sp_int[ct:] = current_sp
 
     # PI controller parameters (intentionally loose to create excitation)
     Kp = 0.15 / max(0.1, abs(config.gain))
     Ti = max(10.0, config.tau * 2.0)
     integral = 0.0
 
-    # Dead-time ring buffer
+    # Dead-time ring buffer (steps at internal resolution)
     delay_steps = max(1, int(config.dead_time / dt))
     pv_buffer = [config.sp] * delay_steps
 
-    # Steady-state OP to maintain SP at the given gain
     op_ss = config.op_bias
-    pv[0] = config.sp
-    op[0] = op_ss
+    pv_int[0] = config.sp
+    op_int[0] = op_ss
 
-    for i in range(1, n):
-        # PI control
-        error = sp[i] - pv[i - 1]
+    for i in range(1, n_internal):
+        error = sp_int[i] - pv_int[i - 1]
         integral += error * dt
-        integral = max(-50.0 * Ti, min(50.0 * Ti, integral))  # anti-windup
+        integral = max(-50.0 * Ti, min(50.0 * Ti, integral))
         op_raw = op_ss + Kp * (error + integral / Ti)
 
-        # Inject stiction: OP sticks if change is within band
-        if config.stiction > 0 and abs(op_raw - op[i - 1]) < config.stiction:
-            op_raw = op[i - 1]
+        if config.stiction > 0 and abs(op_raw - op_int[i - 1]) < config.stiction:
+            op_raw = op_int[i - 1]
 
-        # Inject oscillation via sinusoidal disturbance
         if config.oscillation_period > 0:
             op_raw += 3.0 * math.sin(2 * math.pi * i * dt / config.oscillation_period)
 
-        op[i] = float(np.clip(op_raw, 0.0, 100.0))
+        op_int[i] = float(np.clip(op_raw, 0.0, 100.0))
 
-        # Process model: FOPDT
-        # New PV contribution from current OP (before dead time)
         pv_new = pv_buffer.pop(0)
-        dpv = (config.gain * op[i] - pv_new) / config.tau * dt
+        dpv = (config.gain * op_int[i] - pv_new) / config.tau * dt
         pv_new += dpv
 
-        # Inject nonlinearity
         if config.nonlinearity > 0:
-            pv_new += config.nonlinearity * 0.005 * (op[i] - op_ss) ** 2 * dt
+            pv_new += config.nonlinearity * 0.005 * (op_int[i] - op_ss) ** 2 * dt
 
         pv_buffer.append(pv_new)
+        pv_int[i] = pv_buffer[0]
+        pv_int[i] += rng.normal(0, config.noise_std * abs(config.sp))
 
-        # PV is the delayed output
-        pv[i] = pv_buffer[0]
+    # Downsample to output resolution
+    pv = pv_int[::downsample][:n]
+    sp = sp_int[::downsample][:n]
+    op = op_int[::downsample][:n]
+    mode = ["AUTO"] * n
 
-        # Add measurement noise
-        pv[i] += rng.normal(0, config.noise_std * abs(config.sp))
-
-    # Build timestamps
     start = datetime(2026, 5, 22, 6, 0, 0)
-    timestamps = [start + timedelta(seconds=float(i * dt)) for i in range(n)]
+    timestamps = [start + timedelta(seconds=float(i * downsample)) for i in range(n)]
 
     return LoopData(
         config=config, timestamps=timestamps,

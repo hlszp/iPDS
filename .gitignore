@@ -38,3 +38,6 @@ frontend/dist/
 
 # SQLite databases
 *.db
+
+# Playwright MCP logs
+.playwright-mcp/console-*.log

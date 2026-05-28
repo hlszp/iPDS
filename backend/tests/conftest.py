@@ -5,8 +5,16 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.config.features import FeatureFlag
+from app.config.settings import settings
+from app.data import database as database_module
+from app.data import runtime_provider as runtime_provider_module
 from app.data.database import get_db
 from app.main import app
+from app import main_seed as main_seed_module
+from app.models.loop import Base as LoopBase
+from app.models.production import MonitoringAggregateSnapshot, ReportArtifact, ReportJob
+from app.models.user import Base as UserBase, User
 
 TEST_DB_URL = "sqlite:///./test_pds_config.db"
 
@@ -26,11 +34,15 @@ app.dependency_overrides[get_db] = override_get_db
 
 
 @pytest.fixture(autouse=True)
-def test_db():
+def test_db(monkeypatch):
     """Create tables fresh, seed, yield, then drop."""
-    from app.models.loop import Base as LoopBase
-    from app.models.user import Base as UserBase
-    from app.config.features import FeatureFlag
+    monkeypatch.setattr(settings, "environment", "test")
+    monkeypatch.setattr(database_module, "engine", engine)
+    monkeypatch.setattr(database_module, "SessionLocal", TestingSessionLocal)
+    monkeypatch.setattr(runtime_provider_module, "SessionLocal", TestingSessionLocal)
+    monkeypatch.setattr(main_seed_module, "engine", engine)
+    monkeypatch.setattr(main_seed_module, "SessionLocal", TestingSessionLocal)
+    runtime_provider_module.reset_runtime_provider()
 
     LoopBase.metadata.create_all(bind=engine)
     UserBase.metadata.create_all(bind=engine)
@@ -38,7 +50,6 @@ def test_db():
 
     db = TestingSessionLocal()
     try:
-        from app.models.user import User
         if not db.query(User).filter(User.username == "admin").first():
             pw_hash, salt = User.hash_password("admin123")
             db.add(User(username="admin", password_hash=pw_hash, salt=salt, role="admin", display_name="管理员"))
@@ -46,30 +57,37 @@ def test_db():
         for key, enabled in defaults.items():
             if not db.query(FeatureFlag).filter(FeatureFlag.key == key).first():
                 db.add(FeatureFlag(key=key, enabled=enabled))
-        from app.data.mock import PRESET_LOOPS
-        from app.models.loop import LoopTag
-        ENG_UNIT_MAP = {"FLOW": "t/h", "LEVEL": "%", "TEMP": "°C", "PRESSURE": "MPa"}
-        for c in PRESET_LOOPS:
-            if not db.query(LoopTag).filter(LoopTag.tag_name == c.tag_name).first():
-                db.add(LoopTag(
-                    tag_name=c.tag_name, unit=c.unit, loop_type=c.loop_type,
-                    description=c.description or f"{c.tag_name} 控制回路",
-                    pv_tag=f"{c.tag_name}.PV", sp_tag=f"{c.tag_name}.SP",
-                    op_tag=f"{c.tag_name}.OP", mode_tag=f"{c.tag_name}.MODE",
-                    eng_unit=ENG_UNIT_MAP.get(c.loop_type, "EU"),
-                    sample_interval=c.sample_interval, dead_time_typical=c.dead_time,
-                ))
         db.commit()
     finally:
         db.close()
 
+    main_seed_module.migrate_plant_device()
+    main_seed_module.seed_loop_groups()
+    main_seed_module.seed_loops()
+
     yield
 
-    LoopBase.metadata.drop_all(bind=engine)
-    UserBase.metadata.drop_all(bind=engine)
     FeatureFlag.__table__.drop(bind=engine, checkfirst=True)
+    UserBase.metadata.drop_all(bind=engine)
+    LoopBase.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture
 def client():
     return TestClient(app)
+
+
+@pytest.fixture
+def db_session():
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@pytest.fixture
+def auth_headers(client):
+    login_r = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    token = login_r.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}

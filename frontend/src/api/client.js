@@ -94,6 +94,11 @@ export const api = {
   updateDevice: (id, data) => request(`/devices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteDevice: (id) => request(`/devices/${id}`, { method: 'DELETE' }),
 
+  // Runtime source
+  getRuntimeSource: () => request('/production/runtime-source'),
+  updateRuntimeSource: (source) => request('/production/runtime-source', { method: 'PUT', body: JSON.stringify({ source }) }),
+  validateRuntimeSource: () => request('/production/runtime-source/validate', { method: 'POST' }),
+
   // Overview & Monitoring
   getOverview: (params = {}) => request(withQuery('/overview/summary', params)),
   getMonitoringRealtime: (params = {}) => request(withQuery('/monitoring/realtime', params)),
@@ -103,4 +108,17 @@ export const api = {
   getAssessmentRealtime: (params = {}) => request(withQuery('/assessment/realtime', params)),
   getRadar: (tag) => request(`/assessment/${tag}/radar`),
   getSuggestions: (tag) => request(`/assessment/${tag}/suggestions`),
+
+  // Ops — scheduler & audit reads
+  getSchedulerJobs: () => request('/ops/scheduler/jobs'),
+  getSchedulerRuns: (jobKey) => request(withQuery('/ops/scheduler/runs', jobKey ? { job_key: jobKey } : {})),
+  getReportJobs: () => request('/ops/reports/jobs'),
+  getReportArtifacts: (jobId) => request(withQuery('/ops/reports/artifacts', jobId ? { job_id: jobId } : {})),
+  getAuditEvents: () => request('/production/audit-events'),
+
+  // Identification & Simulation
+  getIdentification: (tag) => request(`/identification/${tag}`),
+  getExcitation: (tag) => request(`/identification/${tag}/excitation`),
+  getSimulationScenarios: () => request('/simulation/scenarios'),
+  runSimulation: (data) => request('/simulation/run', { method: 'POST', body: JSON.stringify(data) }),
 };

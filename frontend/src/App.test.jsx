@@ -16,8 +16,8 @@ describe('App shell', () => {
     localStorage.setItem('pds_token', 'fake-token');
     localStorage.setItem('pds_user', JSON.stringify({ username: 'admin', role: 'admin', display_name: '管理员' }));
     render(<MemoryRouter initialEntries={['/']}><App /></MemoryRouter>);
-    expect(screen.getByText('驾驶舱')).toBeInTheDocument();
-    expect(screen.getByText('回路管理')).toBeInTheDocument();
-    expect(screen.getByText('管理员')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '全景驾驶舱' })).toBeInTheDocument();
+    expect(screen.getByText('回路建模')).toBeInTheDocument();
+    expect(screen.getAllByText('管理员').length).toBeGreaterThan(0);
   });
 });

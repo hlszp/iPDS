@@ -11,7 +11,7 @@ from typing import Optional
 try:
     from weasyprint import HTML
     _WEASYPRINT = True
-except ImportError:
+except Exception:
     _WEASYPRINT = False
 
 from ..assessment.engine import LoopAssessment

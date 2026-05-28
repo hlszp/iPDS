@@ -137,18 +137,428 @@ Based on: /office-hours design doc
 - 移动端推送 — Phase 2
 - 多租户/中央管理平台 — Phase 3
 
-## GSTACK REVIEW REPORT
+## 2026-05-27 Pause / Resume Note
 
-| Review | Trigger | Why | Runs | Status | Findings |
-|--------|---------|-----|------|--------|----------|
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | CLEAN (SELECTIVE) | 4 proposals, 2 accepted, 2 deferred |
-| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAN (PLAN) | 13 decisions, 45 test gaps, 17 Codex findings |
-| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | — |
-| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+| 项目 | 状态 | 说明 |
+|---|---|---|
+| 正式产品化收敛方向 | 已确认 | 原型 `PDS-client-demo/prototype/index.html` 仅作为 IA、页面构成、信任提示与视觉层次参考；不允许为了演示引入 fake 页面、fake 数据或误导性流程。 |
+| 第一轮前端收敛 | 已完成 | 已完成全局产品壳、Overview、Monitoring 的第一轮正式产品化改造。 |
+| 技术验证 | 部分完成 | `npm --prefix frontend run build` 通过；`npm --prefix frontend run test:run -- src/App.test.jsx` 通过。 |
+| 浏览器联调 | 阻塞 | 前端可启动，但访问 `/api/overview/summary`、`/api/plants/tree`、`/api/production/runtime-source`、`/api/features` 等接口时统一 500。 |
 
-- **UNRESOLVED**: 0
-- **VERDICT**: CEO + ENG CLEARED — ready to implement
+### 本轮已改文件
+
+| 文件 | 作用 |
+|---|---|
+| `frontend/src/components/Layout.jsx` | 生命周期导向导航、顶栏、全局信任条 |
+| `frontend/src/components/Layout.module.css` | 正式产品壳样式 |
+| `frontend/src/styles/global.css` | 扩展全局设计 token |
+| `frontend/src/App.jsx` | 统一产品壳接线 |
+| `frontend/src/pages/Overview/index.jsx` | 驾驶舱式 Overview 重构 |
+| `frontend/src/pages/Monitoring/index.jsx` | 监控页重构为实时清单 + 历史统计 |
+| `frontend/src/App.test.jsx` | 同步测试断言 |
+
+### 下次继续顺序
+
+| 优先级 | 事项 | 说明 |
+|---|---|---|
+| P0 | 修后端启动/迁移链路 | 从 `backend/` 目录启动后 Alembic baseline 已开始执行，但后续接口统一 500；需先定位根因。 |
+| P1 | 重做真实数据浏览器验收 | 后端恢复后，先验证 Layout / Overview / Monitoring 的正常与 degraded 状态。 |
+| P2 | 继续收口页面 | 建议继续 Assessment → Reports → Settings。 |
+## 2026-05-26 CEO Review Addendum
+
+### Mode
+- **Implementation path:** 广覆盖并行补齐
+- **Review mode:** 选择性扩展
+
+### Accepted scope additions
+- 全局可信源状态条，基于统一 Runtime Trust Contract。
+- 跨页闭环工作流直达，基于统一 Workflow Context。
+
+### NOT in scope
+- 迁移学习整定模块本轮不作为并行补齐的 gating 项。
+- 更泛化的 MES / 工业互联网平台双向集成仍保持后续阶段化推进。
+- 专家服务流程产品化仍不是当前主线交付门槛。
+
+### What already exists
+| Sub-problem | Existing asset | Reuse verdict |
+|---|---|---|
+| 运行数据源切换与降级展示 | `backend/app/data/runtime_provider.py`, `backend/app/routers/overview.py:136`, `backend/app/routers/monitoring.py:79`, `frontend/src/pages/Settings/index.jsx:121`, `frontend/src/pages/Overview/index.jsx:120`, `frontend/src/pages/Monitoring/index.jsx:30` | 保留资产，统一 contract，不再各页各讲各的 |
+| 报表入口与作业落库 | `backend/app/routers/reports.py:41`, `backend/app/services/jobs.py`, `backend/app/services/reporting/engine.py` | 复用引擎，补异常分层与状态语义 |
+| 页面间工作流入口 | `frontend/src/pages/LoopDetail/index.jsx:28`, 现有 Overview / Monitoring / Reports / Assessment 页面 | 复用现有页面，补统一 workflow context |
+| 实时评估链路 | `backend/app/routers/overview.py`, `backend/app/routers/monitoring.py`, `backend/app/services/assessment/engine.py` | 实时查询保留；历史查询独立出读模型 |
+| 启动与健康检查 | `backend/app/main.py:15`, `/api/health*` | 保留基础框架，补 rollout / rollback 编排 |
+
+### Dream state delta
+| Stage | Description |
+|---|---|
+| Current state | 页面和模块很全，但历史查询语义不成立、可信状态分散、报表失败黑箱、数据源切换过于轻率、跨页主路径弱。 |
+| This review | 不推翻广覆盖路线，但要求把“可信状态、真实历史、报表错误语义、受控控制面、跨页上下文、发布编排”补成产品级 contract。 |
+| 12-month ideal | 广覆盖能力仍在，但每一页说同一种真话；报表、监控、评估、整定之间有上下文接力；上线可回滚；真实历史和真实数据边界清楚。 |
+
+### Section findings
+
+#### 1. Architecture
+**Accepted decision:** 建立统一 Runtime Trust Contract，而不是继续让 `runtime_provider` 散落在各接口和页面。  
+**Accepted decision:** 建立统一 Workflow Context，而不是继续依赖裸 URL 跳转和页面各自重查。
+
+```text
+System architecture target
+
+TDengine / PostgreSQL / Aggregates
+            │
+            ▼
+Runtime source manager ──────► Runtime Trust Contract
+            │                         │
+            │                         ├── Overview banner
+            │                         ├── Monitoring banner
+            │                         ├── Reports banner
+            │                         └── Settings control plane
+            │
+            ├── Realtime assessment APIs
+            └── Historical aggregate read model
+
+Reports / Overview / Monitoring / Assessment
+            │
+            ▼
+      Workflow Context
+            │
+            ▼
+ LoopDetail / Tuning / Result playback
+```
+
+#### 2. Error & Rescue Map
+**Accepted decision:** `backend/app/routers/reports.py` 不能继续用 catch-all 500，必须拆异常类别、job 状态、用户提示、日志上下文。
+
+| Method / codepath | What can go wrong | Exception class | Rescued? | Rescue action | User sees |
+|---|---|---|---|---|---|
+| `GET /api/reports/loop/{tag_name}` | 回路不存在 | `HTTPException(404)` | Y | 返回 404，不创建成功作业 | 指定回路不存在 |
+| `GET /api/reports/loop/{tag_name}` | runtime 数据不可用 / 降级不可接受 | `RuntimeSourceUnavailableError` | N -> GAP | 记录失败 job，返回明确可重试/不可重试状态 | 数据源不可用，稍后重试或联系管理员 |
+| `GET /api/reports/loop/{tag_name}` | WeasyPrint / HTML 渲染失败 | `ReportRenderError` | N -> GAP | 记录失败 job，附 trace id | 报表生成失败 |
+| `GET /api/reports/loop/{tag_name}` | artifact 持久化失败 | `ReportArtifactPersistError` | N -> GAP | 标记 job failed，保留上下文日志 | 报表保存失败 |
+| `GET /api/reports/batch` | 过滤后无回路 | `HTTPException(404)` | Y | 返回 404 | 指定范围暂无回路 |
+| `GET /api/reports/batch` | 批量评估中单回路异常 | `AssessmentExecutionError` | N -> GAP | 明确是 fail-fast 还是 partial report | 批量报表生成失败 / 部分失败 |
+
+#### 3. Security & Threat Model
+**Accepted decision:** 运行数据源切换升级为 admin-only 控制面动作；生产环境默认限制 mock/auto-demo；补审计记录；收紧 CORS。
+
+| Threat | Likelihood | Impact | Mitigation required |
+|---|---|---|---|
+| 非管理员切到 mock/auto-demo，用户误以为在看真实数据 | Med | High | admin-only + 审计 + 环境策略 |
+| CORS 过宽导致浏览器侧访问边界过松 | Med | Med | 白名单 origins，禁用生产全开 |
+| workflow context 被篡改导致越权导航或错误上下文 | Med | Med | 只存可验证引用，不把授权决策放前端上下文里 |
+| 报表失败黑箱导致敏感操作不可追踪 | Med | Med | 失败 job、trace id、审计日志 |
+
+#### 4. Data Flow & Interaction Edge Cases
+**Accepted decision:** 历史查询从即时 runtime 评估链路剥离，建立独立历史读模型。
+
+```text
+Historical query target flow
+
+INPUT(range, dimension, scope)
+  │
+  ├── nil / invalid dimension ──► 400 with explicit error
+  ├── empty scope ──────────────► empty result + source banner
+  ▼
+Historical aggregate read model
+  │
+  ├── no snapshot yet ──────────► partial / not-ready state
+  ├── stale snapshot ───────────► stale marker + timestamp
+  ├── query failure ────────────► failed state + retry path
+  ▼
+Output(points + trust contract)
+```
+
+#### 5. Code Quality
+No new blocking findings beyond the accepted architecture decisions. The main code-quality direction is to remove duplicated runtime state interpretation from page components and routers.
+
+#### 6. Tests
+No separate scope expansion, but the accepted decisions imply new test obligations.
+
+| New thing | Required tests |
+|---|---|
+| Runtime Trust Contract | unit tests for state mapping; API contract tests; page rendering tests for normal/degraded/stale/no-data |
+| Workflow Context | route/context tests; refresh/back-button tests; permission boundary tests |
+| Report exception taxonomy | unit tests per exception class; integration tests for failed job states |
+| Historical read model | aggregate correctness tests; stale snapshot tests; no-data tests; long-range query tests |
+| Controlled source switching | authz tests; audit log tests; production-policy tests |
+| Rollout / rollback plan | smoke checklist and migration/backfill verification scripts |
+
+#### 7. Performance
+No standalone blocking issue beyond the historical query design. The review requires aggregate read paths instead of recomputing day/month/year from per-request loop assessment.
+
+#### 8. Observability
+No extra decision beyond the accepted ones, but the plan now requires structured trust-state logs, report failure taxonomy logs, aggregate freshness metrics, and source-switch audit events.
+
+#### 9. Deployment & Rollout
+**Accepted decision:** 本轮必须补显式 rollout / rollback 编排，而不是继续依赖启动即迁移。
+
+```text
+Deployment sequence
+
+1. Apply schema migration
+2. Backfill / refresh aggregate snapshots
+3. Deploy backend with dual-read compatibility
+4. Verify health + trust contract + report jobs
+5. Enable frontend trust/workflow UI
+6. Restrict source policy in production
+
+Rollback
+
+Frontend off
+  ▼
+Backend feature off / compatibility mode
+  ▼
+Stop aggregate readers
+  ▼
+Schema rollback only if backward-safe
+```
+
+#### 10. Long-term Trajectory
+Reversibility: **3/5** after the accepted decisions. Better than current state, because trust contract, workflow context, and historical read model make future changes explicit instead of implicit.
+
+#### 11. Design & UX
+UI scope confirmed. The accepted additions should surface as a persistent trust bar and a visible workflow handoff path across Overview / Monitoring / Reports / Assessment / LoopDetail / Tuning.
+
+```text
+User flow target
+
+Report / Overview / Monitoring
+        │
+        ▼
+   Select bad loop
+        │
+        ▼
+ Assessment / LoopDetail
+        │   shows diagnosis + trust state + next action
+        ▼
+      Tuning
+        │
+        ▼
+ Result playback / report-back
+```
+
+## Implementation Tasks
+Synthesized from this review's findings.
+
+- [ ] **T-CEO-1 (P1, human: ~1d / CC: ~20min)** — Runtime trust — define a unified Runtime Trust Contract and replace per-page ad hoc runtime state rendering.
+  - Surfaced by: Architecture / Security / UX findings on `overview.py:136`, `monitoring.py:79`, `monitoring.py:145`, `Overview/index.jsx:120`, `Monitoring/index.jsx:30`, `Settings/index.jsx:121`
+  - Files: `backend/app/data/runtime_provider.py`, `backend/app/routers/overview.py`, `backend/app/routers/monitoring.py`, `frontend/src/pages/Overview/index.jsx`, `frontend/src/pages/Monitoring/index.jsx`, `frontend/src/pages/Settings/index.jsx`
+  - Verify: backend tests for contract shape; frontend rendering checks for normal/degraded/stale states
+- [ ] **T-CEO-2 (P1, human: ~1d / CC: ~20min)** — Workflow context — define a shared workflow context for report → assessment → tuning handoff.
+  - Surfaced by: Architecture / UX findings on `LoopDetail/index.jsx:28-31`
+  - Files: `frontend/src/pages/Reports/`, `frontend/src/pages/Overview/`, `frontend/src/pages/Monitoring/`, `frontend/src/pages/LoopDetail/`, `frontend/src/pages/TuningWorkspace/`, shared routing/state layer
+  - Verify: route navigation tests, refresh/back tests, manual golden-path walkthrough
+- [ ] **T-CEO-3 (P1, human: ~0.5d / CC: ~15min)** — Report failures — replace catch-all report 500s with explicit exception taxonomy and failed job semantics.
+  - Surfaced by: Error & Rescue Map on `backend/app/routers/reports.py:44-68` and `backend/app/routers/reports.py:79-107`
+  - Files: `backend/app/routers/reports.py`, `backend/app/services/reporting/`, `backend/app/services/jobs.py`
+  - Verify: API tests for 404 / source unavailable / render failure / persist failure
+- [ ] **T-CEO-4 (P1, human: ~2d / CC: ~30min)** — Historical aggregates — split day/month/year monitoring history from 24h runtime evaluation.
+  - Surfaced by: Data Flow finding on `backend/app/routers/monitoring.py:83-146`
+  - Files: `backend/app/routers/monitoring.py`, aggregate snapshot model/service, reporting readers
+  - Verify: aggregate correctness tests, stale snapshot tests, long-range query smoke tests
+- [ ] **T-CEO-5 (P1, human: ~0.5d / CC: ~15min)** — Source control plane — make runtime source switching admin-only, audited, and environment-gated.
+  - Surfaced by: Security finding on `backend/app/main.py:31-36` and `frontend/src/pages/Settings/index.jsx:97-129`
+  - Files: `backend/app/main.py`, authz/audit services, runtime source APIs, `frontend/src/pages/Settings/index.jsx`
+  - Verify: authz tests, audit event tests, production policy checks
+- [ ] **T-CEO-6 (P1, human: ~0.5d / CC: ~15min)** — Release choreography — document and implement rollout / rollback order for migrations, aggregate backfill, contract rollout, and source policy.
+  - Surfaced by: Deployment finding on `backend/app/main.py:15-21`
+  - Files: `README.md`, deployment scripts, startup / migration flow docs
+  - Verify: staged deploy checklist and rollback rehearsal
+
+## 2026-05-26 Eng Review Addendum
+
+### Step 0 — Scope Challenge
+- **Scope accepted as-is**, but only after confirming sequential dependency handling instead of treating all six P1 tasks as flat-parallel work.
+- **What already exists**
+
+| Sub-problem | Existing code/flow | Reuse verdict |
+|---|---|---|
+| Runtime/source state | `backend/app/data/runtime_provider.py`, `backend/app/routers/overview.py`, `backend/app/routers/monitoring.py`, `frontend/src/pages/Overview/index.jsx`, `frontend/src/pages/Monitoring/index.jsx`, `frontend/src/pages/Settings/index.jsx` | Reuse, but centralize into shared schema/serializer/adapter layer |
+| Report generation | `backend/app/routers/reports.py`, `backend/app/services/reporting/engine.py`, `backend/app/services/jobs.py` | Reuse, but replace catch-all failure semantics |
+| Monitoring history API shape | `backend/app/routers/monitoring.py:83-146` | Reuse route, replace implementation and add regression coverage |
+| Startup and health | `backend/app/main.py`, `/api/health*` | Reuse health surface, decouple migration/backfill from app startup |
+| Existing frontend navigation | `frontend/src/pages/LoopDetail/index.jsx` and existing Reports/Overview/Monitoring/Assessment pages | Reuse page surfaces, add explicit workflow protocol |
+
+- **NOT in scope**
+
+| Item | Rationale |
+|---|---|
+| 迁移学习整定 | Not blocking the current trust/history/reporting hardening path |
+| 更泛化的 MES / 工业互联网平台双向集成 | Separate integration program, not needed to stabilize current product contracts |
+| 专家服务流程产品化 | Valuable later, but not required for this engineering hardening pass |
+| 新增前端全局 store 平台 | Overkill for current workflow handoff problem |
+| 双层历史聚合（TDengine + PG） | Spends innovation tokens without current need |
+
+### Architecture review
+1. **Accepted:** Historical aggregates live in PostgreSQL as product-facing precomputed snapshots; TDengine remains raw time-series source.
+2. **Accepted:** Runtime Trust Contract becomes a **layered evidence-grade contract**, not a single god-object and not just a banner state.
+3. **Accepted:** Workflow Context is an explicit minimal protocol, not browser-local hidden state and not a full global store.
+4. **Accepted:** Release choreography is decoupled from `app.main` startup; migrations and aggregate backfill become explicit deployment steps.
+
+#### Architecture target
+
+```text
+TDengine raw series (pv/sp/op/mode)
+        │
+        ├── scheduled/incremental aggregate refresh
+        ▼
+PostgreSQL aggregate snapshots
+        │
+        ├── monitoring history
+        ├── overview/report rollups
+        └── audit/report alignment
+
+Runtime source manager
+        │
+        ▼
+Runtime Trust Contract
+  ├── global trust: configured/effective source, degraded, policy, dependency snapshot
+  ├── query trust: freshness, partial, empty, scope
+  └── evidence trust: provenance, data_completeness, calculation_version, confidence
+
+Report/Overview/Monitoring/Assessment
+        │
+        ▼
+Workflow Context protocol
+        │
+        ▼
+LoopDetail -> Tuning -> Result playback
+```
+
+### Code Quality review
+1. **Accepted:** Introduce a shared schema/serializer/adapter layer for trust/workflow semantics; pages and routers should consume, not reinterpret.
+2. **Accepted:** Workflow Context is limited to a minimal serializable field set such as `source_page`, `scope_ref`, `loop_tag`, `suggested_action`, `report_period`, `return_to`.
+
+#### Files that should carry inline ASCII diagrams
+| File/module area | Diagram to embed |
+|---|---|
+| `backend/app/data/runtime_provider.py` | trust contract field layering and data provenance flow |
+| new aggregate snapshot service/model | refresh pipeline and stale/partial state transitions |
+| `backend/app/routers/reports.py` or report service boundary | error classification / rescue flow |
+| workflow context helper/module | handoff protocol and allowed fields |
+| deployment/migration script docs | rollout and rollback sequence |
+
+### Test review
+
+#### Coverage diagram
+
+```text
+CODE PATHS                                            USER FLOWS
+[+] Runtime Trust Contract                            [+] Trust visibility across pages
+  ├── [GAP] global trust serializer                     ├── [GAP] Overview shows normal/degraded/stale states
+  ├── [GAP] query-level trust adapter                   ├── [GAP] Monitoring dimension switch keeps trust coherent
+  └── [GAP] evidence-grade fields                       └── [GAP] Reports/Settings show consistent source semantics
+
+[+] Monitoring history rewrite                        [+] Monitoring history UX
+  ├── [GAP] hour aggregate read                         ├── [GAP] hour/day/month switching
+  ├── [GAP] day aggregate read                          ├── [GAP] empty-range UX
+  ├── [GAP] month aggregate read                        ├── [GAP] stale snapshot marker
+  ├── [GAP] stale snapshot path                         └── [GAP] query failure retry UX
+  └── [GAP] query failure path
+
+[+] Reports failure taxonomy                          [+] Report generation UX
+  ├── [GAP] loop not found                              ├── [GAP] single-loop success
+  ├── [GAP] runtime unavailable                         ├── [GAP] batch no-data path
+  ├── [GAP] render failure                              ├── [GAP] render failure message
+  ├── [GAP] artifact persist failure                    └── [GAP] partial/batch failure visibility
+  └── [GAP] batch partial failure
+
+[+] Workflow Context                                  [+] Cross-page workflow
+  ├── [GAP] protocol serialization                      ├── [GAP] report -> detail -> tuning
+  ├── [GAP] refresh survival                            ├── [GAP] back-button return path
+  ├── [GAP] back-button path                            ├── [GAP] shared-link reopen path
+  └── [GAP] permission boundary                         └── [GAP] non-admin / stale context handling
+
+[+] Source control plane                              [+] Admin control plane
+  ├── [GAP] admin-only authorization                    ├── [GAP] admin source switch succeeds
+  ├── [GAP] production policy gate                      ├── [GAP] non-admin blocked clearly
+  ├── [GAP] audit event emission                        └── [GAP] production mock/auto-demo disallowed UX
+  └── [GAP] health snapshot reuse
+
+[+] Release choreography                              [+] Deploy/rollback operations
+  ├── [GAP] migration step                              ├── [GAP] staged deploy smoke
+  ├── [GAP] aggregate backfill step                     ├── [GAP] compatibility window verification
+  ├── [GAP] compatibility read path                     └── [GAP] rollback rehearsal
+  └── [GAP] rollback compatibility
+
+COVERAGE: 0/31 paths fully locked in file-level plan before this review
+QUALITY: GAP-heavy by design; eng review now requires explicit matrix
+CRITICAL REGRESSION: `backend/app/routers/monitoring.py:83-146` day/month history semantics rewrite must get full regression coverage
+```
+
+#### Test matrix decisions
+- Runtime Trust Contract: unit + API contract + frontend rendering tests
+- Historical aggregate read model: integration + regression + stale/no-data/failure tests
+- Reports failure taxonomy: unit + API integration tests
+- Workflow Context: route/integration/E2E-style navigation tests
+- Source control plane: authz + audit + policy tests
+- Release choreography: deploy smoke and rollback rehearsal checklist
+
+### Performance review
+1. **Accepted:** PG aggregate snapshots are precomputed/incrementally refreshed read models, not per-request recalculation.
+2. **Accepted:** Trust/dependency health must come from a shared health snapshot / short-TTL cache, not page-by-page active probing.
+
+### Failure modes
+
+| Codepath | Failure mode | Test covers? | Error handling? | User sees clear error? | Critical gap? |
+|---|---|---:|---:|---:|---:|
+| Historical aggregate lookup | snapshot missing for scope | Planned | Planned | Planned | No |
+| Historical aggregate lookup | stale snapshot served as fresh | Planned | Planned | Planned | No |
+| Historical aggregate lookup | query failure / DB timeout | Planned | Planned | Planned | No |
+| Runtime trust rendering | evidence fields absent/misaligned across pages | Planned | Partial | Partial | No |
+| Report generation | render failure | Planned | Planned | Planned | No |
+| Report generation | artifact persist failure | Planned | Planned | Planned | No |
+| Workflow context | refresh/back/share loses context | Planned | Partial | Partial | No |
+| Source control plane | non-admin switch or production mock toggle | Planned | Planned | Planned | No |
+| Deployment rollout | migration applied but backfill missing | Planned | Planned | Planned | No |
+
+### Parallelization strategy
+
+| Step | Modules touched | Depends on |
+|---|---|---|
+| Trust contract shared layer | `backend/app/data`, `backend/app/routers`, `frontend/src/pages`, shared UI/helpers | — |
+| Historical aggregate snapshots | `backend/app/models`, `backend/app/services`, `backend/app/routers`, reporting readers | data model alignment |
+| Report failure taxonomy | `backend/app/routers`, `backend/app/services/reporting`, `backend/app/services/jobs` | trust/error model conventions |
+| Workflow context | `frontend/src/pages`, routing/shared helpers | trust contract field decisions |
+| Source control plane | `backend/app/main`, auth/audit/runtime APIs, `frontend/src/pages/Settings` | trust contract + policy model |
+| Release choreography | deploy/docs/scripts | aggregate + source-control semantics |
+
+- **Lane A:** historical aggregate snapshots -> release choreography (shared backend data/deploy path)
+- **Lane B:** trust contract shared layer -> source control plane (shared trust/policy semantics)
+- **Lane C:** report failure taxonomy (independent backend lane after error model alignment)
+- **Lane D:** workflow context (frontend lane after trust field decisions)
+- **Execution order:** Launch A + B + C in parallel once schema/policy decisions are frozen. Launch D after trust contract field set is finalized. Finish with release choreography.
+- **Conflict flags:** Lanes A and B both touch backend data semantics; align snapshot/trust schema first. Lanes B and D share trust field naming; do not start D before B field contract is frozen.
+
+## Implementation Tasks
+Synthesized from this eng review's findings.
+
+- [ ] **T-ENG-1 (P1, human: ~1d / CC: ~20min)** — historical aggregates — define PostgreSQL precomputed snapshot schema, refresh semantics, stale thresholds, and regression tests for `/api/monitoring/history`.
+  - Surfaced by: Architecture + Test + Performance review — PG aggregate read model, forced regression coverage, precomputed snapshots
+  - Files: `backend/app/models/`, `backend/app/services/`, `backend/app/routers/monitoring.py`, reporting readers, `backend/tests/`
+  - Verify: backend pytest for hour/day/month, stale snapshot, empty scope, query failure
+- [ ] **T-ENG-2 (P1, human: ~1d / CC: ~20min)** — trust contract — upgrade Runtime Trust Contract into a layered evidence-grade shared schema/serializer/adapter model.
+  - Surfaced by: Architecture + Code Quality + Cross-model tension on trust/evidence fields
+  - Files: `backend/app/data/runtime_provider.py`, `backend/app/routers/overview.py`, `backend/app/routers/monitoring.py`, `frontend/src/pages/Overview/index.jsx`, `frontend/src/pages/Monitoring/index.jsx`, `frontend/src/pages/Settings/index.jsx`
+  - Verify: contract tests, frontend rendering tests, shared health snapshot tests
+- [ ] **T-ENG-3 (P1, human: ~0.5d / CC: ~15min)** — report errors — replace catch-all report failures with explicit exception taxonomy, failed job states, and user-visible failure mapping.
+  - Surfaced by: Architecture/Test review on `backend/app/routers/reports.py`
+  - Files: `backend/app/routers/reports.py`, `backend/app/services/reporting/`, `backend/app/services/jobs.py`, `backend/tests/`
+  - Verify: API tests for loop missing, runtime unavailable, render failure, artifact persist failure, batch partial failure
+- [ ] **T-ENG-4 (P1, human: ~0.5d / CC: ~15min)** — workflow protocol — define minimal serializable Workflow Context protocol and route/back/refresh tests.
+  - Surfaced by: Architecture + Code Quality + Test review
+  - Files: `frontend/src/pages/Reports/`, `frontend/src/pages/Overview/`, `frontend/src/pages/Monitoring/`, `frontend/src/pages/LoopDetail/`, `frontend/src/pages/TuningWorkspace/`, shared routing helper/tests
+  - Verify: navigation tests for report/detail/tuning, refresh survival, back-button behavior, stale context handling
+- [ ] **T-ENG-5 (P1, human: ~0.5d / CC: ~15min)** — source control plane — make runtime source switching admin-only, audited, policy-gated, and backed by shared health snapshots.
+  - Surfaced by: Architecture + Performance review
+  - Files: `backend/app/main.py`, runtime source APIs, auth/audit services, `frontend/src/pages/Settings/index.jsx`, tests
+  - Verify: authz tests, audit tests, production policy tests, health snapshot reuse checks
+- [ ] **T-ENG-6 (P1, human: ~0.5d / CC: ~15min)** — deployment choreography — separate migration/backfill from app startup and document smoke + rollback sequence.
+  - Surfaced by: Architecture + Performance + Failure-mode review
+  - Files: `backend/app/main.py`, deploy scripts/docs, `README.md`
+  - Verify: deploy checklist, compatibility smoke checks, rollback rehearsal steps
+
 
 ## 驾驶舱设计规范 (Design Review)
 
@@ -319,3 +729,323 @@ The current repo already contains enough product surface to prove the wedge: das
 | 1 | CEO | Hold product framing to 仪表/自控工程师 PID workflow wedge | User-confirmed | P6 | User confirmed the existing wedge, so review stays execution-focused instead of reopening strategy. | Broader platform reframing |
 | 2 | CEO | Recommend report-first workflow wedge over equal-weight module breadth | Taste | P1/P5 | This covers the full trust loop with the least new surface area and best matches shipped code. | Broad module parity; service-led console |
 | 3 | CEO | Proceed in single-reviewer mode for Codex lane | Mechanical | P6 | Codex auth failed; blocking the whole review would add no value. | Retrying broken auth as gate |
+
+## 2026-05-26 Design Review Addendum
+
+### System Audit
+- **UI scope:** confirmed. This plan changes Overview / Monitoring / Reports / LoopDetail / Tuning 的信息层级、信任表达、跨页 handoff、状态语义。
+- **DESIGN.md:** missing. This review calibrated against universal design principles plus the existing dark industrial cockpit tokens already in `PLAN.md`.
+- **Mockups:** design binary exists but visual generation was blocked by missing OpenAI API key, so this review proceeded in text-only mode.
+
+### Initial rating
+- **Overall design completeness before fixes: 5/10**
+- It was a 5 because the plan had routes, components, and contracts, but it did not yet specify what the user sees first, how trust is visually proven, how ambiguous states feel, or how the workflow resolves doubt step by step.
+- **A 10/10 for this plan** means: every key screen uses the same three-layer hierarchy, evidence-grade trust is visible but not overwhelming, stale/partial/context-expired states are explicit, and the operator journey answers “can I trust this, what is wrong, what should I do next?” without extra thinking.
+
+### What already exists
+| Area | Existing pattern | Reuse verdict |
+|---|---|---|
+| Dark cockpit tokens | `PLAN.md` existing Design Review token section | Reuse base colors and density, but extend semantics for trust/evidence/workflow |
+| Dashboard hierarchy | KPI + heatmap + Top10 + trend + event flow | Reuse broad shell, but reorder to trust/evidence -> problem -> action |
+| Panel-level error handling | old cockpit spec mentions panel-level degradation | Reuse concept, expand to stale/partial/context-expired language |
+| Overview/Monitoring/LoopDetail surfaces | existing pages already exist in repo | Reuse surfaces, do not redesign from zero |
+
+### NOT in scope
+| Item | Rationale |
+|---|---|
+| Full standalone DESIGN.md system | Valuable later, but current need is a minimal trust/evidence/workflow vocabulary |
+| Mobile-first redesign | Current product remains desktop-first for plant / control-room usage |
+| Flashier marketing-style visual refresh | This is app UI; credibility and hierarchy matter more than spectacle |
+| Global frontend state platform redesign | Not needed to solve current workflow handoff design problem |
+
+### Pass 1 — Information Architecture
+- **Before:** 6/10
+- **After:** 9/10
+- **Accepted decision:** all key workflow surfaces use the same three-layer hierarchy:
+
+```text
+LAYER 1  Trust / Evidence
+  - Is this data trustworthy enough to act on?
+  - Source, freshness, completeness, confidence, degraded/partial markers
+
+LAYER 2  Current problem
+  - Which loop / unit / report item needs attention now?
+  - Ranked bad loops, highlighted anomaly, current diagnosis
+
+LAYER 3  Next action
+  - What should I do next?
+  - Open detail, review tuning, inspect evidence, return path
+```
+
+- This applies to Overview, Monitoring, Reports entry surfaces, LoopDetail, and Tuning entry states.
+
+### Pass 2 — Interaction State Coverage
+- **Before:** 5/10
+- **After:** 9/10
+- **Accepted decision:** trust/history/workflow get a full state table, not just generic loading/error states.
+
+| Feature | Loading | Empty | Error | Success | Partial | Stale | Context-expired |
+|---|---|---|---|---|---|---|---|
+| Trust bar | Skeleton strip with stable layout | Not applicable; if trust payload absent show “信任信息暂不可用” + retry | Red/amber inline banner with retry and last known update if available | Show current source + evidence summary | Show “部分证据缺失” and list missing proof class | Show stale age and allow read-only continuation | Not applicable |
+| Monitoring history | Preserve page shell, skeleton chart/table | Warm empty state: “该范围暂无有效历史快照” + adjust range CTA | Inline failure state with retry and explain whether query or dependency failed | Render aggregate with freshness badge | Render available points + note missing segments | Amber stale badge + last successful snapshot time | Not applicable |
+| Workflow handoff | Keep destination shell and show handoff loading | “当前没有可继续处理的对象” + back to source CTA | “上下文解析失败/目标不可用” + safe return CTA | Show source, target, suggested action, return path | Show destination in read-only with missing context note | Allow inspect but warn evidence may be out of date | Explicit expired-state card: explain why context expired, preserve source link, require reselection |
+| Reports | Skeleton list / detail placeholders | “当前筛选下暂无可生成或可追踪报表” + broaden scope CTA | Job failure card with failure class + retry / inspect logs CTA | Show report status and direct next step | Show completed with missing evidence segments flagged | Show stale generation timestamp | Not applicable |
+
+### Pass 3 — User Journey & Emotional Arc
+- **Before:** 6/10
+- **After:** 9/10
+- **Accepted decision:** the plan now treats the workflow as doubt-reduction, not just navigation.
+
+| Step | User does | User feels | Design must answer |
+|---|---|---|---|
+| 1 | Opens Overview / Monitoring / Report list | “这些数据是真的吗？” | Layer 1 trust summary proves source, freshness, completeness, confidence |
+| 2 | Sees ranked bad loops / anomalies | “这个问题值得我花时间吗？” | Layer 2 explains severity and why this item is being surfaced now |
+| 3 | Opens LoopDetail | “这建议是不是拍脑袋？” | Evidence panel ties diagnosis to provenance, calculation version, missing-data caveats |
+| 4 | Enters Tuning | “我现在可以改吗？” | Next-action area distinguishes safe-to-proceed vs evidence-insufficient |
+| 5 | Reviews result playback | “改完有没有更好？” | Return path shows before/after comparison and whether evidence quality changed |
+
+- CTA tone rule:
+  - when evidence is sufficient: **“继续查看 / 进入整定”**
+  - when evidence is partial: **“可查看，但建议先核验证据”**
+  - when evidence is insufficient: **“当前证据不足，暂不建议整定”**
+
+### Pass 4 — AI Slop Risk
+- **Before:** 4/10
+- **After:** 8/10
+- **Accepted decision:** explicitly forbid the fallback pattern “old dashboard unchanged + trust bar pasted on top.”
+- Trust/evidence must become layout skeleton, not a decorative strip.
+- App UI rule: cards only when the card itself is the interaction. Avoid returning to generic stacked-card dashboards for evidence surfaces.
+
+### Pass 5 — Design System Alignment
+- **Before:** 3/10
+- **After:** 8/10
+- **Accepted decision:** add a minimal design vocabulary for new semantics.
+
+| Semantic layer | Visual rule | Copy / interaction rule |
+|---|---|---|
+| Trusted / action-safe | calm green or accent-neutral, never celebratory | concise, factual, no hype |
+| Caution / partial | amber, visible but non-blocking | explain what is missing and whether read-only continuation is allowed |
+| Unsafe / insufficient evidence | red only when action should stop, not for every degraded state | explicit stop language and recovery CTA |
+| Provenance / audit detail | secondary panel / disclosure region | dense, factual, scannable labels |
+| Next action | single primary CTA, never multiple competing primaries | action verb must reflect certainty level |
+
+### Pass 6 — Responsive & Accessibility
+- **Before:** 4/10
+- **After:** 8/10
+- **Accepted decision:** desktop-first gets explicit viewport and accessibility rules.
+
+| Constraint | Spec |
+|---|---|
+| 1920x1080 | full three-layer layout visible without collapsing Layer 1 trust summary |
+| 1600x900 | Layer 1 remains fixed-height summary; secondary evidence details collapse behind disclosure; lower-priority side panels may fold |
+| Keyboard flow | Trust summary -> current problem list -> primary CTA -> evidence disclosure -> return path; no dead-end focus traps |
+| Touch targets | 44px min for CTA / disclosure / retry controls even on desktop touchscreens / remote desktop setups |
+| Contrast | body text >= 4.5:1; trust states must rely on text + icon/label, not color alone |
+| Screen reader order | Trust summary first, current problem second, primary action third, evidence details after |
+
+### Pass 7 — Unresolved design decisions
+- **Resolved:** evidence defaults to layered disclosure, not all-open and not all-hidden.
+- **Accepted decision:** first layer shows 3-4 fields max: `effective_source`, `freshness`, `data_completeness`, `confidence`.
+- Deeper panel holds `configured_source`, `provenance`, `calculation_version`, missing-data breakdown, dependency notes, and caveats.
+
+## Implementation Tasks
+Synthesized from this design review's findings.
+
+- [ ] **T-DESIGN-1 (P1, human: ~0.5d / CC: ~15min)** — information architecture — rewrite Overview / Monitoring / Reports / LoopDetail top-level layout specs into trust -> problem -> action hierarchy.
+  - Surfaced by: Pass 1 — Information Architecture
+  - Files: `PLAN.md`, affected frontend page specs/components
+  - Verify: design spec walkthrough against three-layer rule
+- [ ] **T-DESIGN-2 (P1, human: ~0.5d / CC: ~15min)** — state design — add full trust/history/workflow state table, including stale, partial, and context-expired user-visible behaviors.
+  - Surfaced by: Pass 2 — Interaction State Coverage
+  - Files: `PLAN.md`, frontend state/render specs, test plan
+  - Verify: every state has screen behavior, CTA, and retained context defined
+- [ ] **T-DESIGN-3 (P1, human: ~0.5d / CC: ~15min)** — journey language — add doubt-reduction storyboard and CTA language rules across report/detail/tuning flow.
+  - Surfaced by: Pass 3 — User Journey & Emotional Arc
+  - Files: `PLAN.md`, copy / UX specs for Reports/Monitoring/LoopDetail/Tuning
+  - Verify: each workflow step answers the user's likely question before the next action
+- [ ] **T-DESIGN-4 (P1, human: ~0.5d / CC: ~15min)** — anti-slop layout guardrails — ban “trust bar pasted on old dashboard” and define evidence as layout skeleton.
+  - Surfaced by: Pass 4 — AI Slop Risk
+  - Files: `PLAN.md`, page layout specs
+  - Verify: no key screen is described as unchanged layout plus added strip
+- [ ] **T-DESIGN-5 (P2, human: ~0.5d / CC: ~10min)** — minimal design vocabulary — define trust/evidence/workflow semantics until a real DESIGN.md exists.
+  - Surfaced by: Pass 5 — Design System Alignment
+  - Files: `PLAN.md`
+  - Verify: new semantics have explicit colors, copy tone, and component meaning
+- [ ] **T-DESIGN-6 (P1, human: ~0.5d / CC: ~10min)** — desktop accessibility — define 1600x900 reflow, keyboard order, contrast, and disclosure behavior for evidence-heavy screens.
+  - Surfaced by: Pass 6 — Responsive & Accessibility
+  - Files: `PLAN.md`, frontend layout specs
+  - Verify: desktop viewport and keyboard path rules are explicit
+
+## 2026-05-26 Eng Review Refresh After Design Review
+
+### Scope Challenge refresh
+- **Scope accepted as-is again.** No new workstream was added. The design review sharpened existing trust/workflow/history work rather than creating a third UI platform lane.
+- **What already exists**
+
+| Sub-problem | Existing plan asset | Reuse verdict |
+|---|---|---|
+| Trust hierarchy | `Design Review Addendum` three-layer IA + existing trust contract work | Reuse, merge directly into trust lane |
+| Evidence disclosure | design pass 7 layered evidence rule | Reuse, but translate into explicit API split |
+| Workflow doubt-reduction path | design pass 3 journey storyboard | Reuse, merge into workflow protocol and CTA/state tests |
+| 1600x900 + keyboard rules | design pass 6 responsive/accessibility rules | Reuse, but centralize as shared layout/disclosure rules |
+
+- **NOT in scope**
+
+| Item | Rationale |
+|---|---|
+| New standalone UI orchestration workstream | Design additions refine existing trust/workflow work, not a new platform |
+| One giant trust payload for all pages | Conflicts with now-approved layered evidence design |
+| Per-page custom disclosure/reflow logic | Conflicts with cross-page consistency and testability goals |
+
+### Architecture refresh
+1. **Accepted:** merge design constraints into existing lanes, do not create a third UI orchestration lane.
+2. **Accepted:** split trust into two contracts:
+   - `RuntimeTrustSummary` for page-level source/freshness/completeness/confidence
+   - `AnalysisEvidence` for object-level provenance/calculation_version/missing-data/caveats
+3. **Accepted:** design-driven disclosure and 1600x900 reflow become shared layout/state rules, not page-by-page behavior.
+
+#### Updated dependency graph
+
+```text
+Lane A  Historical aggregate snapshots
+  └── feeds RuntimeTrustSummary freshness/completeness
+
+Lane B  Trust contracts + source control plane
+  ├── RuntimeTrustSummary
+  ├── AnalysisEvidence
+  └── shared health snapshot / policy model
+
+Lane C  Report failure taxonomy
+  └── feeds user-visible error classes into Reports + Workflow
+
+Lane D  Workflow protocol + shared disclosure/reflow rules
+  ├── consumes RuntimeTrustSummary
+  ├── consumes AnalysisEvidence when deep evidence is needed
+  └── implements trust -> problem -> action layout and 1600x900 collapse rules
+
+Lane E  Release choreography
+  └── deploy order, backfill, compatibility, smoke, rollback
+```
+
+### Code Quality refresh
+1. **Accepted:** no extra UI platform. Design rules attach to trust/workflow shared helpers.
+2. **Accepted:** shared rule layer must now cover viewport/reflow/disclosure behavior, not just data schemas.
+3. **Accepted:** avoid page-sized mega tests by splitting tests along semantic boundaries.
+
+#### Shared modules that now deserve explicit ownership
+| Shared concern | Engineering home |
+|---|---|
+| `RuntimeTrustSummary` serialization | backend shared trust adapter / frontend shared consumer |
+| `AnalysisEvidence` serialization | backend object-level evidence adapter / detail-level consumer |
+| disclosure defaults | shared frontend trust/evidence helper |
+| 1600x900 collapse rules | shared frontend layout helper/hook |
+| keyboard order contract | shared frontend interaction/accessibility helper |
+
+### Test review refresh
+
+#### Updated coverage diagram
+
+```text
+SEMANTIC TEST LAYERS                                PAGE / FLOW TESTS
+[+] RuntimeTrustSummary                             [+] Overview / Monitoring / Reports shells
+  ├── [GAP] source + degraded mapping                ├── [GAP] layer-1 trust shown first
+  ├── [GAP] freshness/completeness                   ├── [GAP] stale + partial visual states
+  └── [GAP] health snapshot reuse                    └── [GAP] 1600x900 reflow keeps layer 1 visible
+
+[+] AnalysisEvidence                                [+] LoopDetail / Tuning evidence flow
+  ├── [GAP] provenance/calculation_version           ├── [GAP] first-layer 3-4 fields only
+  ├── [GAP] missing-data breakdown                   ├── [GAP] disclosure expansion
+  └── [GAP] caveat serialization                     └── [GAP] insufficient-evidence CTA tone
+
+[+] State table rendering                            [+] Workflow journey
+  ├── [GAP] stale state                              ├── [GAP] report -> detail -> tuning
+  ├── [GAP] partial state                            ├── [GAP] context-expired recovery
+  ├── [GAP] context-expired state                    ├── [GAP] back-button / return path
+  └── [GAP] empty/history error states               └── [GAP] refresh + shared-link reopen
+
+[+] Shared disclosure/reflow rules                  [+] Admin/source control
+  ├── [GAP] 1920 baseline                            ├── [GAP] admin switch with consistent trust updates
+  ├── [GAP] 1600x900 collapse                        └── [GAP] non-admin blocked with stable hierarchy
+  └── [GAP] keyboard order contract
+
+CRITICAL REGRESSION (still mandatory)
+  `backend/app/routers/monitoring.py:83-146`
+  - day/month history rewrite
+  - now also must preserve design states: stale, empty, query-error, trust-first ordering
+```
+
+#### Testing structure rule
+- `RuntimeTrustSummary` tests: shared contract tests
+- `AnalysisEvidence` tests: object-level evidence contract tests
+- state-table tests: dedicated rendering/state tests
+- workflow protocol tests: route/back/refresh/context-expired tests
+- page integration tests: only verify composition and correct use of lower layers
+- regression tests: `/api/monitoring/history` plus monitoring page dimension switch and stale/empty/error behavior
+
+### Performance refresh
+1. **Accepted:** 1600x900 collapse and disclosure defaults must come from shared rules, not per-page bespoke logic.
+2. **Accepted:** evidence disclosure should not force every page to fetch object-level evidence eagerly; deep evidence loads only where needed.
+
+### Failure modes refresh
+
+| Codepath | Failure mode | Test covers? | Error handling? | User sees clear error? | Critical gap? |
+|---|---|---:|---:|---:|---:|
+| `RuntimeTrustSummary` | trust summary shown after problem list | Planned | Planned | Planned | No |
+| `AnalysisEvidence` | detail page shows too many fields by default | Planned | Planned | Planned | No |
+| disclosure helper | 1600x900 collapse hides primary trust summary | Planned | Planned | Planned | No |
+| workflow protocol | context-expired loses safe return path | Planned | Planned | Planned | No |
+| monitoring history | stale/empty/error states regress during API rewrite | Planned | Planned | Planned | No |
+
+### Parallelization strategy refresh
+| Step | Modules touched | Depends on |
+|---|---|---|
+| Historical aggregates | `backend/app/models`, `backend/app/services`, `backend/app/routers` | — |
+| Trust summary + evidence contracts | `backend/app/data`, `backend/app/routers`, shared frontend consumers | historical freshness/completeness semantics |
+| Report failure taxonomy | `backend/app/routers`, `backend/app/services/reporting`, `backend/app/services/jobs` | — |
+| Workflow protocol + disclosure/reflow rules | shared frontend helpers, `frontend/src/pages/*` | trust/evidence contract field names |
+| Source control plane | runtime APIs, auth/audit, `frontend/src/pages/Settings` | trust summary contract |
+| Release choreography | deploy/docs/scripts | historical aggregates + source control plane |
+
+- **Lane A:** historical aggregates -> release choreography
+- **Lane B:** trust summary + evidence contracts -> source control plane
+- **Lane C:** report failure taxonomy
+- **Lane D:** workflow protocol + shared disclosure/reflow rules
+- **Execution order:** Launch A + C first. Launch B once aggregate semantics are frozen. Launch D after B field names and disclosure defaults are frozen. Then finish with release choreography.
+- **Conflict flags:** B and D both touch shared frontend trust consumers; do not parallelize them blindly. A feeds freshness/completeness semantics into B.
+
+## Implementation Tasks
+Synthesized from this eng review refresh.
+
+- [ ] **T-ENG-R1 (P1, human: ~0.5d / CC: ~15min)** — split trust contracts — define `RuntimeTrustSummary` and `AnalysisEvidence` as separate API/domain contracts.
+  - Surfaced by: Architecture refresh after design review
+  - Files: `backend/app/data/`, `backend/app/routers/`, frontend shared trust consumers, tests
+  - Verify: contract tests prove page-level vs object-level fields are not mixed
+- [ ] **T-ENG-R2 (P1, human: ~0.5d / CC: ~15min)** — redesign-aware monitoring regression — expand `/api/monitoring/history` regression tests to cover stale/empty/query-error visual semantics and trust-first ordering.
+  - Surfaced by: Test review refresh
+  - Files: `backend/app/routers/monitoring.py`, `backend/tests/`, monitoring page tests
+  - Verify: API + UI regression suite covers hour/day/month and new design states
+- [ ] **T-ENG-R3 (P1, human: ~0.5d / CC: ~15min)** — shared disclosure/reflow rules — centralize 1600x900 collapse, first-layer trust preservation, disclosure defaults, and keyboard order.
+  - Surfaced by: Performance + Code Quality refresh
+  - Files: shared frontend helpers/hooks, `frontend/src/pages/Overview/`, `Monitoring/`, `Reports/`, `LoopDetail/`, `TuningWorkspace/`
+  - Verify: shared rule tests plus page integration checks
+- [ ] **T-ENG-R4 (P1, human: ~0.5d / CC: ~10min)** — semantic test split — restructure planned tests around summary contract, evidence contract, state-table rendering, and workflow protocol instead of page-sized mega specs.
+  - Surfaced by: Code Quality + Test review refresh
+  - Files: test plan, backend tests, frontend tests
+  - Verify: each semantic layer has its own dedicated test file responsibility
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 2 | CLEAN (SELECTIVE) | 2 expansions accepted, trust contract later upgraded to evidence-grade |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 3 | ISSUES_OPEN (PLAN) | refresh added 4 design-driven engineering findings on API layering, regression coverage, shared disclosure rules, and test granularity |
+| Design Review | `/plan-design-review` | UI/UX gaps | 1 | CLEAN (FULL) | score 5/10 → 8/10, 6 design decisions added |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+
+- **CROSS-MODEL:** trust moved from status-only to evidence-grade; refresh now translates that into split contracts and design-aware regressions.
+- **UNRESOLVED:** 0
+- **VERDICT:** CEO + DESIGN cleared. Eng review still open until refreshed tasks are absorbed into the implementation plan and rechecked.
+
+
+

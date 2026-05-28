@@ -28,7 +28,7 @@ def list_loops(
         q = q.filter(LoopTag.unit == unit)
     if loop_type:
         q = q.filter(LoopTag.loop_type == loop_type)
-    return q.offset(skip).limit(limit).all()
+    return [_to_response(loop) for loop in q.offset(skip).limit(limit).all()]
 
 
 @router.get("/{tag_name}", response_model=LoopTagResponse)
@@ -36,7 +36,7 @@ def get_loop(tag_name: str, db: Session = Depends(get_db)):
     loop = db.query(LoopTag).filter(LoopTag.tag_name == tag_name).first()
     if not loop:
         raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found")
-    return loop
+    return _to_response(loop)
 
 
 @router.post("", response_model=LoopTagResponse, status_code=201)
@@ -145,6 +145,7 @@ def _to_response(loop: LoopTag) -> LoopTagResponse:
         loop_category=loop.loop_category,
         loop_weight=loop.loop_weight,
         loop_group_id=loop.loop_group_id,
+        device_id=loop.device_id,
         description=loop.description,
         pv_tag=loop.pv_tag,
         sp_tag=loop.sp_tag,

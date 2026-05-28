@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..data.database import get_db
-from ..data.loop_cache import get_all_loop_data, get_loop_data
+from ..data.runtime_provider import get_runtime_source_manager
 from ..models.loop import LoopGroup, LoopTag
 from ..models.plant import Device, Plant
 from ..services.assessment.engine import assess_full
@@ -46,7 +46,8 @@ def get_realtime(
     db: Session = Depends(get_db),
 ):
     """Return latest assessment indicators for all loops with filtering."""
-    all_data = get_all_loop_data(hours=24, seed=42)
+    query_result = get_runtime_source_manager().resolve_loop_data(db=db, hours=24, seed=42)
+    all_data = query_result.loops
     loop_filter = _build_loop_filter(plant_id, device_id, loop_group_id, db)
 
     rows = []
@@ -85,13 +86,14 @@ def get_realtime(
     reverse = sort_dir == "desc"
     rows.sort(key=lambda r: r.get(key) or 0, reverse=reverse)
 
-    return {"rows": rows, "total": len(rows)}
+    return {"rows": rows, "total": len(rows), "runtime_provider": query_result.snapshot.__dict__}
 
 
 @router.get("/{tag_name}/radar")
 def get_radar(tag_name: str):
     """Return radar chart data for a single loop (8 dimensions)."""
-    ld = get_loop_data(tag_name, hours=24, seed=42)
+    query_result = get_runtime_source_manager().resolve_loop_data(hours=24, seed=42)
+    ld = next((item for item in query_result.loops if item.config.tag_name == tag_name), None)
     if ld is None:
         raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found")
 
@@ -119,7 +121,8 @@ def get_radar(tag_name: str):
 @router.get("/{tag_name}/suggestions")
 def get_loop_suggestions(tag_name: str):
     """Return intelligent diagnosis and optimization suggestions for a loop."""
-    ld = get_loop_data(tag_name, hours=24, seed=42)
+    query_result = get_runtime_source_manager().resolve_loop_data(hours=24, seed=42)
+    ld = next((item for item in query_result.loops if item.config.tag_name == tag_name), None)
     if ld is None:
         raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found")
 

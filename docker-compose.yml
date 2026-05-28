@@ -2,17 +2,68 @@
 # Usage: docker compose up -d
 
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${PDS_POSTGRES_DB:-pds}
+      POSTGRES_USER: ${PDS_POSTGRES_USER:-pds}
+      POSTGRES_PASSWORD: ${PDS_POSTGRES_PASSWORD:-pds-dev-password}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PDS_POSTGRES_USER:-pds} -d ${PDS_POSTGRES_DB:-pds}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  tdengine:
+    image: tdengine/tdengine:3.3.6.0
+    ports:
+      - "6030:6030"
+      - "6041:6041"
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'select server_version();' | taos -h 127.0.0.1 -P 6030 -u root -ptaosdata >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+    volumes:
+      - tdengine_data:/var/lib/taos
+      - tdengine_logs:/var/log/taos
+    restart: unless-stopped
+
   backend:
     build: ./backend
     ports:
       - "8000:8000"
-    volumes:
-      - pds_data:/app/data
-      - pds_config:/app/pds_config.db
     environment:
-      - PDS_DEBUG=false
-      - PDS_JWT_SECRET=${PDS_JWT_SECRET:-change-me-in-production}
-      - PDS_TDENGINE_HOST=${PDS_TDENGINE_HOST:-localhost}
+      PDS_ENVIRONMENT: ${PDS_ENVIRONMENT:-production}
+      PDS_DEBUG: ${PDS_DEBUG:-false}
+      PDS_ENABLE_DEV_SEED: ${PDS_ENABLE_DEV_SEED:-false}
+      PDS_CORS_ALLOW_ALL: ${PDS_CORS_ALLOW_ALL:-false}
+      PDS_CORS_ORIGINS: ${PDS_CORS_ORIGINS:-["http://127.0.0.1","http://localhost"]}
+      PDS_JWT_SECRET: ${PDS_JWT_SECRET:?set-a-strong-jwt-secret}
+      PDS_DATABASE_URL: ${PDS_DATABASE_URL:-postgresql+psycopg://pds:pds-dev-password@postgres:5432/pds}
+      PDS_RUNTIME_DATA_SOURCE: ${PDS_RUNTIME_DATA_SOURCE:-tdengine}
+      PDS_TDENGINE_HOST: ${PDS_TDENGINE_HOST:-tdengine}
+      PDS_TDENGINE_PORT: ${PDS_TDENGINE_PORT:-6030}
+      PDS_TDENGINE_USER: ${PDS_TDENGINE_USER:-root}
+      PDS_TDENGINE_PASSWORD: ${PDS_TDENGINE_PASSWORD:-taosdata}
+      PDS_TDENGINE_DATABASE: ${PDS_TDENGINE_DATABASE:-pds}
+      PDS_BOOTSTRAP_ADMIN_USERNAME: ${PDS_BOOTSTRAP_ADMIN_USERNAME:?set-bootstrap-admin-username}
+      PDS_BOOTSTRAP_ADMIN_PASSWORD: ${PDS_BOOTSTRAP_ADMIN_PASSWORD:?set-bootstrap-admin-password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      tdengine:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health').read()\""]
+      interval: 15s
+      timeout: 5s
+      retries: 20
     restart: unless-stopped
 
   frontend:
@@ -20,9 +71,11 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
-  pds_data:
-  pds_config:
+  postgres_data:
+  tdengine_data:
+  tdengine_logs:

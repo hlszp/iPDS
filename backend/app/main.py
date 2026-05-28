@@ -5,185 +5,20 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-import json
-from sqlalchemy import inspect, text
-
-from .config.features import FeatureFlag, load_features
+from .bootstrap import bootstrap_application, validate_security_defaults
 from .config.settings import settings
-from .data.database import SessionLocal, engine
-from .data.mock import PRESET_LOOPS
-from .models.loop import Base, LoopGroup, LoopTag
-from .models.plant import Device, Plant
-from .models.user import Base as UserBase, User
-from .routers import auth as auth_router, assessment as assessment_router, config as config_router, commissioning as commissioning_router, features as features_router, loop as loop_router, monitoring as monitoring_router, overview as overview_router, plant as plant_router, reports as reports_router
-
-ENG_UNIT_MAP = {"FLOW": "t/h", "LEVEL": "%", "TEMP": "°C", "PRESSURE": "MPa"}
+from .health import get_dependency_health, get_liveness, get_readiness
+from .migrations import run_migrations
+from .routers import auth as auth_router, assessment as assessment_router, commissioning as commissioning_router, config as config_router, features as features_router, identification as identification_router, loop as loop_router, monitoring as monitoring_router, ops as ops_router, overview as overview_router, plant as plant_router, production as production_router, reports as reports_router, simulation as simulation_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
-    UserBase.metadata.create_all(bind=engine)
-    FeatureFlag.__table__.create(bind=engine, checkfirst=True)
-    _ensure_schema()
-    _seed_admin()
-    _seed_features()
-    _migrate_plant_device()
-    _seed_loop_groups()
-    _seed_loops()
+    validate_security_defaults()
+    if settings.environment != "test":
+        run_migrations()
+    bootstrap_application()
     yield
-
-
-def _ensure_schema():
-    inspector = inspect(engine)
-    loop_tag_columns = {column["name"] for column in inspector.get_columns("loop_tags")} if inspector.has_table("loop_tags") else set()
-    loop_group_columns = {column["name"] for column in inspector.get_columns("loop_groups")} if inspector.has_table("loop_groups") else set()
-    if "loop_category" not in loop_tag_columns:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE loop_tags ADD COLUMN loop_category VARCHAR(8)"))
-    if "loop_weight" not in loop_tag_columns:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE loop_tags ADD COLUMN loop_weight INTEGER DEFAULT 1"))
-    if "loop_group_id" not in loop_tag_columns:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE loop_tags ADD COLUMN loop_group_id INTEGER"))
-    if "device_id" not in loop_tag_columns:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE loop_tags ADD COLUMN device_id INTEGER"))
-    if "device_id" not in loop_group_columns:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE loop_groups ADD COLUMN device_id INTEGER"))
-
-
-def _migrate_plant_device():
-    """Idempotent migration: create Plant/Device from existing unit strings."""
-    db = SessionLocal()
-    try:
-        distinct_units = {r[0] for r in db.query(LoopTag.unit).distinct() if r[0]}
-        for unit_name in distinct_units:
-            plant = db.query(Plant).filter(Plant.name == unit_name).first()
-            if not plant:
-                plant = Plant(name=unit_name, description=f"{unit_name} 工厂")
-                db.add(plant)
-                db.flush()
-            device = db.query(Device).filter(Device.plant_id == plant.id, Device.name == "主装置").first()
-            if not device:
-                device = Device(plant_id=plant.id, name="主装置", description=f"{unit_name} 主装置")
-                db.add(device)
-                db.flush()
-            db.query(LoopTag).filter(LoopTag.unit == unit_name, LoopTag.device_id.is_(None)).update(
-                {LoopTag.device_id: device.id}, synchronize_session=False
-            )
-            db.query(LoopGroup).filter(LoopGroup.unit == unit_name, LoopGroup.device_id.is_(None)).update(
-                {LoopGroup.device_id: device.id}, synchronize_session=False
-            )
-        db.commit()
-    finally:
-        db.close()
-
-
-def _seed_features():
-    db = SessionLocal()
-    try:
-        defaults = {"assessment": True, "diagnosis": True, "identification": True, "tuning": True, "simulation": True, "reporting": True}
-        for key, enabled in defaults.items():
-            if not db.query(FeatureFlag).filter(FeatureFlag.key == key).first():
-                db.add(FeatureFlag(key=key, enabled=enabled))
-        db.commit()
-        load_features(db)
-    finally:
-        db.close()
-
-
-def _seed_admin():
-    db = SessionLocal()
-    try:
-        if not db.query(User).filter(User.username == "admin").first():
-            pw_hash, salt = User.hash_password("admin123")
-            db.add(User(username="admin", password_hash=pw_hash, salt=salt, role="admin", display_name="管理员"))
-            db.commit()
-    finally:
-        db.close()
-
-
-def _seed_loop_groups():
-    db = SessionLocal()
-    try:
-        defaults = [
-            ("甲醇装置", "反应与分离", 3),
-            ("PSA 制氢", "吸附与稳压", 2),
-            ("气化", "原料与气化炉", 3),
-            ("氨合成", "反应与循环", 3),
-            ("低温甲醇洗", "洗涤与循环", 2),
-        ]
-        for unit_name, name, weight in defaults:
-            if not db.query(LoopGroup).filter(LoopGroup.unit == unit_name, LoopGroup.name == name).first():
-                device = db.query(Device).join(Plant).filter(Plant.name == unit_name, Device.name == "主装置").first()
-                db.add(LoopGroup(
-                    unit=unit_name, name=name, weight=weight,
-                    description=f"{unit_name} {name}",
-                    device_id=device.id if device else None,
-                ))
-        db.commit()
-    finally:
-        db.close()
-
-
-def _seed_loops():
-    db = SessionLocal()
-    try:
-        group_map = {(g.unit, g.name): g.id for g in db.query(LoopGroup).all()}
-        default_group_name = {
-            "甲醇装置": "反应与分离",
-            "PSA 制氢": "吸附与稳压",
-            "气化": "原料与气化炉",
-            "氨合成": "反应与循环",
-            "低温甲醇洗": "洗涤与循环",
-        }
-        category_map = {
-            "FLOW": "快速型",
-            "LEVEL": "慢速型",
-            "TEMP": "稳定型",
-            "PRESSURE": "稳定型",
-        }
-        weight_map = {
-            "FLOW": 2,
-            "LEVEL": 1,
-            "TEMP": 3,
-            "PRESSURE": 3,
-        }
-        for c in PRESET_LOOPS:
-            group_name = default_group_name.get(c.unit)
-            group_id = group_map.get((c.unit, group_name)) if group_name else None
-            loop_type = c.loop_type if c.loop_type in ENG_UNIT_MAP else "OTHER"
-            loop = db.query(LoopTag).filter(LoopTag.tag_name == c.tag_name).first()
-            if not loop:
-                db.add(LoopTag(
-                    tag_name=c.tag_name,
-                    unit=c.unit,
-                    loop_group_id=group_id,
-                    loop_type=loop_type,
-                    loop_category=category_map.get(loop_type, "稳定型"),
-                    loop_weight=weight_map.get(loop_type, 1),
-                    description=c.description or f"{c.tag_name} 控制回路",
-                    pv_tag=f"{c.tag_name}.PV",
-                    sp_tag=f"{c.tag_name}.SP",
-                    op_tag=f"{c.tag_name}.OP",
-                    mode_tag=f"{c.tag_name}.MODE",
-                    eng_unit=ENG_UNIT_MAP.get(loop_type, "EU"),
-                    sample_interval=c.sample_interval,
-                    dead_time_typical=c.dead_time,
-                ))
-                continue
-            if loop.loop_group_id is None:
-                loop.loop_group_id = group_id
-            if not loop.loop_category:
-                loop.loop_category = category_map.get(loop_type, "稳定型")
-            if not loop.loop_weight:
-                loop.loop_weight = weight_map.get(loop_type, 1)
-        db.commit()
-    finally:
-        db.close()
 
 
 app = FastAPI(
@@ -195,7 +30,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=["*"] if settings.cors_allow_all else settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -213,8 +48,27 @@ app.include_router(plant_router.device_router)
 app.include_router(overview_router.router)
 app.include_router(monitoring_router.router)
 app.include_router(assessment_router.router)
+app.include_router(production_router.router)
+app.include_router(ops_router.router)
+app.include_router(identification_router.router)
+app.include_router(simulation_router.router)
 
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "version": app.version}
+    return {"status": "ok", "version": app.version, "environment": settings.environment, "runtime_data_source": settings.runtime_data_source}
+
+
+@app.get("/api/health/live")
+async def health_live():
+    return get_liveness()
+
+
+@app.get("/api/health/ready")
+async def health_ready():
+    return get_readiness()
+
+
+@app.get("/api/health/dependencies")
+async def health_dependencies():
+    return get_dependency_health()

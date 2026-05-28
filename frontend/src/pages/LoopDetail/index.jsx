@@ -53,7 +53,7 @@ function KpiCards({ assessment }) {
   return (
     <div style={{ display: 'flex', gap: 12 }}>
       {items.map((item) => (
-        <div key={item.l} style={{ flex: 1, background: 'var(--surface)', borderRadius: 6, padding: '14px 18px' }}>
+        <div key={item.l} style={{ flex: 1, background: 'var(--surface)', borderRadius: 6, padding: '20px 18px', minHeight: 96 }}>
           <div style={{ fontSize: 'var(--font-sm)', color: 'var(--text-dim)', marginBottom: 4 }}>{item.l}</div>
           <div style={{ fontSize: 28, fontWeight: 700, color: item.c }}>{item.v}</div>
         </div>

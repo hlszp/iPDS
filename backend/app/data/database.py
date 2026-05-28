@@ -9,11 +9,11 @@ from sqlalchemy.orm import sessionmaker
 
 from ..config.settings import settings
 
-DATABASE_URL = "sqlite:///pds_config.db"
+DATABASE_URL = settings.database_url
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},
+    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {},
     echo=settings.debug,
 )
 

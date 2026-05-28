@@ -2,13 +2,14 @@
 
 import json
 import random
+from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..data.database import get_db
-from ..data.loop_cache import get_all_loop_data, get_loop_data
+from ..data.runtime_provider import get_runtime_source_manager
 from ..models.loop import LoopTag
 from ..models.loop_schemas import (
     AssessmentOut,
@@ -34,6 +35,13 @@ from ..services.assessment.engine import LoopAssessment, assess_loop, detect_tre
 from ..services.diagnosis.engine import diagnose_loop
 from ..services.identification.engine import ProcessModel, check_excitation, identify_best
 from ..services.simulation.engine import analyze_simulation, simulate_step_response
+from ..services.snapshots import (
+    persist_assessment_snapshot,
+    persist_diagnosis_snapshot,
+    persist_identification_snapshot,
+    persist_recommendation_snapshot,
+    persist_tuning_snapshot,
+)
 from ..services.tuning.engine import tune_imc, tune_imc_aggressive, tune_lambda
 
 router = APIRouter(prefix="/api/loop", tags=["loop"])
@@ -93,15 +101,13 @@ def _slice_trend(ld, max_points: int = 200) -> StepResponseOut:
     )
 
 
-# ── Dashboard ───────────────────────────────────────────────────────────────
-
 @router.get("/dashboard", response_model=DashboardResponse)
 def dashboard(hours: float = Query(3, ge=1, le=168)):
-    all_data = get_all_loop_data(hours=hours)
+    query_result = get_runtime_source_manager().resolve_loop_data(hours=hours, seed=42)
+    all_data = query_result.loops
 
     assessments: list[LoopAssessment] = []
     for ld in all_data:
-        # Downsample to 30s resolution for performance (24h @ 1s = 86,400 pts → 2,880 pts)
         ds = DASHBOARD_SAMPLE_INTERVAL
         a = assess_loop(
             pv=_downsample(ld.pv, ds), sp=_downsample(ld.sp, ds),
@@ -198,17 +204,16 @@ def dashboard(hours: float = Query(3, ge=1, le=168)):
     return DashboardResponse(kpi=kpi, heatmap=heatmap, top10=top10, trends=trends, events=events)
 
 
-# ── Loop Detail ─────────────────────────────────────────────────────────────
-
 @router.get("/{tag_name}/detail", response_model=LoopDetailResponse)
 def loop_detail(tag_name: str, db: Session = Depends(get_db)):
     loop = db.query(LoopTag).filter(LoopTag.tag_name == tag_name).first()
     if not loop:
         raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found in config")
 
-    ld = get_loop_data(tag_name, hours=3, seed=42)
+    ld = get_runtime_source_manager().resolve_loop_data(db=db, hours=3, seed=42).loops
+    ld = next((item for item in ld if item.config.tag_name == tag_name), None)
     if ld is None:
-        raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found in preset configs")
+        raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found in runtime provider")
 
     assessment = assess_loop(
         pv=ld.pv, sp=ld.sp, op=ld.op, mode=ld.mode,
@@ -251,7 +256,6 @@ def loop_detail(tag_name: str, db: Session = Depends(get_db)):
         "feedforward_tags": ff,
     }
 
-    # Downsample to ~200 points for the frontend chart
     step = max(1, len(ld.pv) // 200)
     t_sliced = time_labels[::step][:200]
     pv_sliced = ld.pv[::step][:200]
@@ -292,9 +296,10 @@ def loop_history(
     if not loop:
         raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found in config")
 
-    ld = get_loop_data(tag_name, hours=hours, seed=42)
+    ld = get_runtime_source_manager().resolve_loop_data(db=db, hours=hours, seed=42).loops
+    ld = next((item for item in ld if item.config.tag_name == tag_name), None)
     if ld is None:
-        raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found in preset configs")
+        raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found in runtime provider")
 
     trend = _slice_trend(ld, max_points=max(60, min(600, int(hours * 3600 / playback_step))))
     return HistoryTrendResponse(
@@ -305,11 +310,10 @@ def loop_history(
     )
 
 
-# ── Excitation Check ────────────────────────────────────────────────────────
-
 @router.get("/{tag_name}/excitation", response_model=ExcitationCheckResponse)
 def excitation_check(tag_name: str):
-    ld = get_loop_data(tag_name, hours=24, seed=42)
+    query_result = get_runtime_source_manager().resolve_loop_data(hours=24, seed=42)
+    ld = next((item for item in query_result.loops if item.config.tag_name == tag_name), None)
     if ld is None:
         raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found")
     ei = check_excitation(ld.op, ld.sp)
@@ -325,17 +329,16 @@ def excitation_check(tag_name: str):
     )
 
 
-# ── Tuning Pipeline ─────────────────────────────────────────────────────────
-
 @router.post("/{tag_name}/tuning", response_model=TuningPipelineResponse)
 def tuning_pipeline(tag_name: str, payload: TuningRequest, db: Session = Depends(get_db)):
     loop = db.query(LoopTag).filter(LoopTag.tag_name == tag_name).first()
     if not loop:
         raise HTTPException(status_code=404, detail=f"Loop '{tag_name}' not found")
 
-    ld = get_loop_data(tag_name, hours=24, seed=42)
+    query_result = get_runtime_source_manager().resolve_loop_data(hours=24, seed=42)
+    ld = next((item for item in query_result.loops if item.config.tag_name == tag_name), None)
     if ld is None:
-        raise HTTPException(status_code=404, detail=f"No preset data for '{tag_name}'")
+        raise HTTPException(status_code=404, detail=f"No runtime data for '{tag_name}'")
 
     config = ld.config
 
@@ -370,6 +373,42 @@ def tuning_pipeline(tag_name: str, payload: TuningRequest, db: Session = Depends
     sim_result = analyze_simulation(sim_data, sp_change=10.0)
     sim_result.tag_name = tag_name
 
+    now = datetime.utcnow()
+    window_start = now - timedelta(hours=24)
+    assessment = assess_loop(
+        pv=ld.pv, sp=ld.sp, op=ld.op, mode=ld.mode,
+        tag_name=tag_name, unit=loop.unit,
+        sample_interval=float(loop.sample_interval),
+        stability_threshold=float(loop.stability_threshold),
+    )
+    diagnosis = diagnose_loop(
+        tag_name=tag_name,
+        pv=ld.pv, sp=ld.sp, op=ld.op,
+        sample_interval=float(loop.sample_interval),
+    )
+
+    assessment_snapshot = persist_assessment_snapshot(db, loop.id, assessment, window_start, now)
+    diagnosis_snapshot = persist_diagnosis_snapshot(db, loop.id, diagnosis, window_start, now)
+    identification_snapshot = persist_identification_snapshot(db, loop.id, ident_result, window_start, now)
+    tuning_snapshot = persist_tuning_snapshot(db, loop.id, pid_params, sim_result)
+    recommendation_snapshot = persist_recommendation_snapshot(
+        db,
+        loop.id,
+        assessment_snapshot.id,
+        diagnosis_snapshot.id,
+        tuning_snapshot.id,
+        risk_level=sim_result.confidence_level,
+        summary_json={
+            "tag_name": tag_name,
+            "primary_fault": diagnosis.primary_fault,
+            "recommendation": sim_result.recommendation,
+            "pid_method": pid_params.method,
+            "confidence_score": sim_result.confidence_score,
+            "identification_snapshot_id": identification_snapshot.id,
+        },
+    )
+    db.commit()
+
     model_out = ProcessModelOut(
         gain=model.gain, tau=model.tau, dead_time=model.dead_time,
         r_squared=model.r_squared, method=model.method,
@@ -399,7 +438,7 @@ def tuning_pipeline(tag_name: str, payload: TuningRequest, db: Session = Depends
         phase_margin_deg=sim_result.phase_margin_deg,
         confidence_score=sim_result.confidence_score,
         confidence_level=sim_result.confidence_level,
-        recommendation=sim_result.recommendation,
+        recommendation=f"{sim_result.recommendation} [recommendation_id={recommendation_snapshot.recommendation_id}]",
     )
 
     step_out = StepResponseOut(

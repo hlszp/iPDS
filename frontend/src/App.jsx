@@ -13,6 +13,9 @@ import Overview from './pages/Overview';
 import Monitoring from './pages/Monitoring';
 import Assessment from './pages/Assessment';
 import AssessmentDetail from './pages/Assessment/AssessmentDetail';
+import Identification from './pages/Identification';
+import Simulation from './pages/Simulation';
+import SchedulerAudit from './pages/SchedulerAudit';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('pds_token'));
@@ -21,13 +24,20 @@ export default function App() {
   const onLogin = (t, u) => {
     localStorage.setItem('pds_token', t);
     localStorage.setItem('pds_user', JSON.stringify(u));
-    setToken(t); setUser(u);
+    setToken(t);
+    setUser(u);
+  };
+
+  const onLogout = () => {
+    localStorage.clear();
+    setToken(null);
+    setUser(null);
   };
 
   if (!token) return <Login onLogin={onLogin} />;
 
   return (
-    <Layout user={user} onLogout={() => { localStorage.clear(); setToken(null); setUser(null); }}>
+    <Layout user={user} onLogout={onLogout}>
       <Routes>
         <Route path="/" element={<Overview />} />
         <Route path="/monitoring" element={<Monitoring />} />
@@ -37,6 +47,9 @@ export default function App() {
         <Route path="/loop/:tagName/tuning" element={<TuningWorkspace />} />
         <Route path="/config" element={<Config />} />
         <Route path="/tuning" element={<TuningSelector />} />
+        <Route path="/identification" element={<Identification />} />
+        <Route path="/simulation" element={<Simulation />} />
+        <Route path="/scheduler" element={<SchedulerAudit />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/commissioning" element={<Commissioning />} />
         <Route path="/settings" element={<Settings />} />
