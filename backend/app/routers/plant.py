@@ -121,16 +121,15 @@ def delete_device(device_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
-# ── Tree ──────────────────────────────────────────────────────────────────────
+@router.get("/{plant_id}/tree", response_model=TreeNodePlant)
+def get_plant_tree(plant_id: int, db: Session = Depends(get_db)):
+    plant = db.query(Plant).filter(Plant.id == plant_id).first()
+    if not plant:
+        raise HTTPException(status_code=404, detail=f"Plant {plant_id} not found")
 
-@router.get("/tree", response_model=PlantTreeResponse)
-def get_tree(db: Session = Depends(get_db)):
-    """Return full Plant → Device → LoopGroup → Loop hierarchy with grades."""
-    plants = db.query(Plant).order_by(Plant.name).all()
     all_groups = db.query(LoopGroup).order_by(LoopGroup.name).all()
     all_loops = db.query(LoopTag).order_by(LoopTag.tag_name).all()
 
-    # Build lookup maps
     group_map = {}
     for g in all_groups:
         group_map.setdefault(g.device_id, []).append(g)
@@ -139,7 +138,6 @@ def get_tree(db: Session = Depends(get_db)):
     for l in all_loops:
         loop_map.setdefault(l.loop_group_id, []).append(l)
 
-    # Get assessment grades from cached loop data
     grade_map = {}
     try:
         all_data = get_all_loop_data(hours=1, seed=42)
@@ -153,36 +151,42 @@ def get_tree(db: Session = Depends(get_db)):
     except Exception:
         pass
 
-    tree_plants = []
-    for plant in plants:
-        devices = db.query(Device).filter(Device.plant_id == plant.id).order_by(Device.name).all()
-        tree_devices = []
-        for device in devices:
-            groups = group_map.get(device.id, [])
-            tree_groups = []
-            for grp in groups:
-                loops = loop_map.get(grp.id, [])
-                tree_loops = [
-                    TreeNodeLoop(
-                        tag_name=l.tag_name,
-                        loop_type=l.loop_type or "",
-                        loop_category=l.loop_category,
-                        grade=grade_map.get(l.tag_name),
-                    )
-                    for l in loops
-                ]
-                tree_groups.append(TreeNodeLoopGroup(
-                    id=grp.id,
-                    name=grp.name,
-                    weight=grp.weight or 1,
-                    loops=tree_loops,
-                ))
-            tree_devices.append(TreeNodeDevice(
-                id=device.id,
-                name=device.name,
-                monitoring_enabled=device.monitoring_enabled,
-                loop_groups=tree_groups,
+    devices = db.query(Device).filter(Device.plant_id == plant.id).order_by(Device.name).all()
+    tree_devices = []
+    for device in devices:
+        groups = group_map.get(device.id, [])
+        tree_groups = []
+        for grp in groups:
+            loops = loop_map.get(grp.id, [])
+            tree_loops = [
+                TreeNodeLoop(
+                    tag_name=l.tag_name,
+                    loop_type=l.loop_type or "",
+                    loop_category=l.loop_category,
+                    grade=grade_map.get(l.tag_name),
+                )
+                for l in loops
+            ]
+            tree_groups.append(TreeNodeLoopGroup(
+                id=grp.id,
+                name=grp.name,
+                weight=grp.weight or 1,
+                loops=tree_loops,
             ))
-        tree_plants.append(TreeNodePlant(id=plant.id, name=plant.name, devices=tree_devices))
+        tree_devices.append(TreeNodeDevice(
+            id=device.id,
+            name=device.name,
+            monitoring_enabled=device.monitoring_enabled,
+            loop_groups=tree_groups,
+        ))
 
-    return PlantTreeResponse(plants=tree_plants)
+    return TreeNodePlant(id=plant.id, name=plant.name, devices=tree_devices)
+
+
+# ── Tree ──────────────────────────────────────────────────────────────────────
+
+@router.get("/tree", response_model=PlantTreeResponse)
+def get_tree(db: Session = Depends(get_db)):
+    """Return lightweight Plant list; children are fetched on demand."""
+    plants = db.query(Plant).order_by(Plant.name).all()
+    return PlantTreeResponse(plants=[TreeNodePlant(id=plant.id, name=plant.name, devices=[]) for plant in plants])

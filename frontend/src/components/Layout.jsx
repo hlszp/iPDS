@@ -69,6 +69,7 @@ export default function Layout({ user, onLogout, children }) {
   const location = useLocation();
   const [treeData, setTreeData] = useState([]);
   const [expanded, setExpanded] = useState(COLLAPSED);
+  const [loadingPlants, setLoadingPlants] = useState({});
   const [runtimeSource, setRuntimeSource] = useState(null);
   const [features, setFeatures] = useState([]);
   const page = useMemo(() => getPageMeta(location.pathname), [location.pathname]);
@@ -89,6 +90,24 @@ export default function Layout({ user, onLogout, children }) {
 
   const enabledFeatures = features.filter((item) => item.enabled).length;
   const runtimeTone = getRuntimeTone(runtimeSource);
+
+  const togglePlant = async (plantId) => {
+    const key = `p-${plantId}`;
+    const plant = treeData.find((item) => item.id === plantId);
+    const nextExpanded = !expanded[key];
+    setExpanded((prev) => ({ ...prev, [key]: nextExpanded }));
+    if (!nextExpanded || !plant || plant.devices?.length > 0 || loadingPlants[plantId]) return;
+    setLoadingPlants((prev) => ({ ...prev, [plantId]: true }));
+    try {
+      const subtree = await api.getPlantSubtree(plantId);
+      setTreeData((prev) => prev.map((item) => (item.id === plantId ? subtree : item)));
+      if ((subtree.devices || []).length <= 1 && subtree.devices?.[0]) {
+        setExpanded((prev) => ({ ...prev, [`d-${subtree.devices[0].id}`]: true }));
+      }
+    } finally {
+      setLoadingPlants((prev) => ({ ...prev, [plantId]: false }));
+    }
+  };
 
   const toggle = (key) => setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
 
@@ -126,35 +145,37 @@ export default function Layout({ user, onLogout, children }) {
             <div className={styles.tree}>
               {treeData.map((plant) => (
                 <div key={`p-${plant.id}`} className={styles.treeUnit}>
-                  <div className={styles.treeUnitName} onClick={() => toggle(`p-${plant.id}`)}>
+                  <div className={styles.treeUnitName} onClick={() => togglePlant(plant.id)}>
                     <span className={styles.treeCaret}>{expanded[`p-${plant.id}`] ? '▼' : '▶'}</span>
                     {plant.name}
                   </div>
-                  {(expanded[`p-${plant.id}`] || treeData.length <= 1) && plant.devices.map((device) => (
-                    <div key={`d-${device.id}`} className={styles.treeGroup}>
-                      <div className={styles.treeGroupName} onClick={() => toggle(`d-${device.id}`)}>
-                        <span className={styles.treeCaret}>{expanded[`d-${device.id}`] ? '▼' : '▶'}</span>
-                        {device.name}
-                      </div>
-                      {(expanded[`d-${device.id}`] || plant.devices.length <= 1) && device.loop_groups.map((grp) => (
-                        <div key={`g-${grp.id}`} className={styles.treeSubGroup}>
-                          <div className={styles.treeSubGroupName} onClick={() => toggle(`g-${grp.id}`)}>
-                            <span className={styles.treeCaret}>{expanded[`g-${grp.id}`] ? '▼' : '▶'}</span>
-                            {grp.name}
-                          </div>
-                          {(expanded[`g-${grp.id}`] || device.loop_groups.length <= 1) && grp.loops.map((loop) => (
-                            <NavLink
-                              key={loop.tag_name}
-                              to={`/loop/${loop.tag_name}`}
-                              className={({ isActive }) => `${styles.treeLoop} ${isActive ? styles.treeLoopActive : ''}`}
-                            >
-                              {loop.tag_name}
-                            </NavLink>
-                          ))}
+                  {expanded[`p-${plant.id}`] ? (
+                    loadingPlants[plant.id] ? <div className={styles.treeEmpty}>加载中...</div> : plant.devices.map((device) => (
+                      <div key={`d-${device.id}`} className={styles.treeGroup}>
+                        <div className={styles.treeGroupName} onClick={() => toggle(`d-${device.id}`)}>
+                          <span className={styles.treeCaret}>{expanded[`d-${device.id}`] ? '▼' : '▶'}</span>
+                          {device.name}
                         </div>
-                      ))}
-                    </div>
-                  ))}
+                        {(expanded[`d-${device.id}`] || plant.devices.length <= 1) && device.loop_groups.map((grp) => (
+                          <div key={`g-${grp.id}`} className={styles.treeSubGroup}>
+                            <div className={styles.treeSubGroupName} onClick={() => toggle(`g-${grp.id}`)}>
+                              <span className={styles.treeCaret}>{expanded[`g-${grp.id}`] ? '▼' : '▶'}</span>
+                              {grp.name}
+                            </div>
+                            {(expanded[`g-${grp.id}`] || device.loop_groups.length <= 1) && grp.loops.map((loop) => (
+                              <NavLink
+                                key={loop.tag_name}
+                                to={`/loop/${loop.tag_name}`}
+                                className={({ isActive }) => `${styles.treeLoop} ${isActive ? styles.treeLoopActive : ''}`}
+                              >
+                                {loop.tag_name}
+                              </NavLink>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    ))
+                  ) : null}
                 </div>
               ))}
               {treeData.length === 0 && <div className={styles.treeEmpty}>暂无数据</div>}

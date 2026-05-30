@@ -110,6 +110,7 @@ export const api = {
 
   // Plant & Device hierarchy
   getPlantTree: () => cachedRequest('plant-tree', () => request('/plants/tree')),
+  getPlantSubtree: (plantId) => request(`/plants/${plantId}/tree`),
   listPlants: () => request('/plants'),
   createPlant: (data) => request('/plants', { method: 'POST', body: JSON.stringify(data) }),
   updatePlant: (id, data) => request(`/plants/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

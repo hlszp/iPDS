@@ -24,7 +24,7 @@
 .treeLoop{display:block;margin-left:12px;padding:4px 0;color:#94a3b8;text-decoration:none;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .treeLoop:hover{color:#fff;}
 .treeLoopActive{color:#4cc9f0;}
-.treeEmpty{color:#64748b;font-size:12px;padding:4px 0;}
+.treeLoading{color:#94a3b8;font-size:11px;padding:4px 0 4px 14px;}
 .footer{padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;}
 .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#f8fafc);color:#0b1220;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex:0 0 auto;}
 .userBlock{min-width:0;}
