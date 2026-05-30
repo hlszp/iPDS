@@ -90,7 +90,13 @@ export const api = {
   listUsers: () => request('/auth/users'),
 
   // Config
-  listLoops: (params = {}) => request(withQuery('/config/loops', params)),
+  listLoops: (params = {}) => {
+    const query = withQuery('/config/loops', params);
+    const useTtlCache = params.limit === 500 && Object.keys(params).every((key) => ['limit', 'unit'].includes(key));
+    return useTtlCache
+      ? cachedRequestWithTtl(`config-loops:${query}`, TTL_10_SECONDS, () => request(query))
+      : request(query);
+  },
   getLoop: (tag) => request(`/config/loops/${tag}`),
   createLoop: (data) => request('/config/loops', { method: 'POST', body: JSON.stringify(data) }),
   updateLoop: (tag, data) => request(`/config/loops/${tag}`, { method: 'PUT', body: JSON.stringify(data) }),
