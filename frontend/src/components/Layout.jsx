@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { api } from '../api/client';
+import { StatusBanner } from './ui';
 import styles from './Layout.module.css';
 
 const NAV_GROUPS = [
@@ -199,10 +200,15 @@ export default function Layout({ user, onLogout, children }) {
         </header>
 
         <section className={styles.runtimeBar}>
-          <div className={styles.runtimeItem}><span>配置模式</span><strong>{runtimeSource?.configured_source || '—'}</strong></div>
-          <div className={styles.runtimeItem}><span>当前生效</span><strong>{runtimeSource?.effective_source || '—'}</strong></div>
-          <div className={styles.runtimeItem}><span>回路覆盖</span><strong>{runtimeSource?.served_loop_count ?? 0}/{runtimeSource?.expected_loop_count ?? 0}</strong></div>
-          <div className={styles.runtimeItemWide}><span>状态说明</span><strong>{runtimeSource?.fallback_reason || runtimeSource?.detail || '尚未读取运行数据源状态'}</strong></div>
+          <StatusBanner
+            tone={runtimeTone}
+            items={[
+              { label: '配置模式', value: runtimeSource?.configured_source || '—' },
+              { label: '当前生效', value: runtimeSource?.effective_source || '—' },
+              { label: '回路覆盖', value: `${runtimeSource?.served_loop_count ?? 0}/${runtimeSource?.expected_loop_count ?? 0}` },
+            ]}
+            detail={runtimeSource?.fallback_reason || runtimeSource?.detail || '尚未读取运行数据源状态'}
+          />
         </section>
 
         <div className={styles.content}>{children}</div>

@@ -1,7 +1,16 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import * as echarts from 'echarts';
+import { echarts } from '../../lib/echarts-line';
 import { api } from '../../api/client';
+import {
+  BackAction,
+  ChartPanel,
+  LoopListItem,
+  MetricCard,
+  Panel,
+  PrimaryAction,
+  StateBlock,
+} from '../../components/ui';
 
 export default function LoopDetail() {
   const { tagName } = useParams();
@@ -17,47 +26,49 @@ export default function LoopDetail() {
       .catch(() => setError(true));
   }, [tagName]);
 
-  if (error) return <div style={{ padding: 40, color: 'var(--text-dim)' }}>回路数据加载失败</div>;
-  if (!data) return <div style={{ padding: 40, color: 'var(--text-dim)' }}>加载中...</div>;
+  if (error) return <StateBlock type="error" title="回路数据加载失败" detail="当前无法读取该回路的诊断证据与运行趋势，请稍后重试。" />;
+  if (!data) return <StateBlock type="loading" title="回路详情加载中" detail="正在汇总结论、证据链与历史趋势。" />;
 
   const info = data.loop_info || {};
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-        <button onClick={() => nav('/')} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', padding: '4px 12px', borderRadius: 4, fontSize: 'var(--font-sm)' }}>← 返回驾驶舱</button>
-        <h2 style={{ color: '#fff', fontSize: 'var(--font-lg)' }}>{tagName}</h2>
-        <span style={{ color: 'var(--text-dim)' }}>{info.unit} · {info.description || info.loop_type}</span>
-        <button onClick={() => nav(`/loop/${tagName}/tuning`)} style={{ marginLeft: 'auto', padding: '8px 20px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 4, fontWeight: 600, fontSize: 'var(--font-md)' }}>PID 整定</button>
-      </div>
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto 1fr 1fr', gap: 12, padding: 12, overflow: 'auto' }}>
-        <KpiCards assessment={data.assessment} />
+    <div className="ui-stack">
+      <Panel
+        title={tagName}
+        subtitle={`${info.unit || '未分配装置'} · ${info.description || info.loop_type || '单回路诊断详情'}`}
+        actions={(
+          <>
+            <BackAction onClick={() => nav('/')}>返回驾驶舱</BackAction>
+            <PrimaryAction onClick={() => nav(`/loop/${tagName}/tuning`)}>进入 PID 整定</PrimaryAction>
+          </>
+        )}
+      >
+        <div className="ui-card-grid">
+          <MetricCard label="自控率" value={data.assessment?.self_control_rate != null ? `${data.assessment.self_control_rate.toFixed(1)}%` : '—'} detail="当前窗口内控制器闭环投入情况" />
+          <MetricCard label="平稳率" value={data.assessment?.stability_rate != null ? `${data.assessment.stability_rate.toFixed(1)}%` : '—'} detail="当前工况下波动是否受控" />
+          <MetricCard label="性能评分" value={data.assessment?.performance_score != null ? data.assessment.performance_score.toFixed(1) : '—'} detail="综合评估得分" />
+          <MetricCard label="当前评级" value={data.assessment?.grade || '—'} detail="用于判断后续处理优先级" />
+        </div>
+      </Panel>
+
+      <div className="ui-shell-grid ui-shell-grid--two">
         <DiagnosisCard diagnosis={data.diagnosis} />
-        <TrendPanel trend={data.trend} title="趋势图（近3小时）" />
-        <InfoPanel info={info} />
+        <Panel title="回路信息" subtitle="先确认对象、量程和采样条件，再解读趋势与诊断结论。">
+          <div className="ui-key-value">
+            <div>位号: <strong>{info.tag_name || '—'}</strong></div>
+            <div>装置: <strong>{info.unit || '—'}{info.sub_unit ? ` / ${info.sub_unit}` : ''}</strong></div>
+            <div>描述: <strong>{info.description || '—'}</strong></div>
+            <div>PV / SP / OP: <strong>{info.pv_tag || '—'} / {info.sp_tag || '—'} / {info.op_tag || '—'}</strong></div>
+            <div>量程: <strong>{info.pv_lo != null && info.pv_hi != null ? `${info.pv_lo}–${info.pv_hi} ${info.eng_unit || ''}` : '—'}</strong></div>
+            <div>采样周期: <strong>{info.sample_interval || '—'}s</strong> · 死区时间: <strong>{info.dead_time_typical != null ? `~${info.dead_time_typical}s` : '—'}</strong></div>
+          </div>
+        </Panel>
+      </div>
+
+      <div className="ui-shell-grid ui-shell-grid--two">
+        <TrendPanel trend={data.trend} title="近 3 小时趋势" />
         <HistoryPlaybackPanel tagName={tagName} />
       </div>
-    </div>
-  );
-}
-
-function KpiCards({ assessment }) {
-  const a = assessment || {};
-  const gradeColor = a.grade === '优' ? 'var(--green)' : a.grade === '良' ? 'var(--blue)' : a.grade === '中' ? 'var(--yellow)' : a.grade === '差' ? 'var(--red)' : 'var(--text-dim)';
-  const items = [
-    { l: '自控率', v: a.self_control_rate != null ? `${a.self_control_rate.toFixed(1)}%` : '—', c: (a.self_control_rate || 0) >= 95 ? 'var(--green)' : 'var(--yellow)' },
-    { l: '平稳率', v: a.stability_rate != null ? `${a.stability_rate.toFixed(1)}%` : '—', c: (a.stability_rate || 0) >= 95 ? 'var(--green)' : 'var(--yellow)' },
-    { l: '性能评分', v: a.performance_score != null ? a.performance_score.toFixed(1) : '—', c: 'var(--accent)' },
-    { l: '评级', v: a.grade || '—', c: gradeColor },
-  ];
-  return (
-    <div style={{ display: 'flex', gap: 12 }}>
-      {items.map((item) => (
-        <div key={item.l} style={{ flex: 1, background: 'var(--surface)', borderRadius: 6, padding: '20px 18px', minHeight: 96 }}>
-          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--text-dim)', marginBottom: 4 }}>{item.l}</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: item.c }}>{item.v}</div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -67,26 +78,23 @@ function DiagnosisCard({ diagnosis }) {
   const primary = suggestionCards.find((item) => item.active);
 
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: 6, padding: 16 }}>
-      <h3 style={{ color: '#fff', fontSize: 'var(--font-md)', marginBottom: 12 }}>故障诊断</h3>
-      {primary && (
-        <div style={{ marginBottom: 10, padding: '6px 10px', background: 'rgba(231,76,60,0.15)', borderRadius: 4, fontSize: 'var(--font-sm)', color: 'var(--red)' }}>
-          优先处理: {primary.title}
+    <Panel title="诊断结论" subtitle="先看最优先问题，再看原因和建议动作。">
+      <div className="ui-stack">
+        {primary ? <div className="ui-callout ui-callout--danger">优先处理：{primary.title}。建议先按该问题排查，再决定是否进入参数整定。</div> : null}
+        <div className="ui-list">
+          {suggestionCards.map((item) => (
+            <LoopListItem
+              key={item.key}
+              title={item.title}
+              meta={`可能原因：${item.reason}｜建议：${item.advice}`}
+              value={item.summary}
+              tone={item.active ? 'danger' : 'success'}
+              secondary={!item.active}
+            />
+          ))}
         </div>
-      )}
-      <div style={{ display: 'grid', gap: 8 }}>
-        {suggestionCards.map((item) => (
-          <div key={item.key} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 4, border: `1px solid ${item.active ? 'rgba(231,76,60,0.3)' : 'rgba(255,255,255,0.04)'}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-              <span style={{ color: '#fff', fontWeight: 600 }}>{item.title}</span>
-              <span style={{ color: item.active ? 'var(--red)' : 'var(--green)', fontWeight: 600 }}>{item.summary}</span>
-            </div>
-            <div style={{ color: 'var(--text-dim)', fontSize: 'var(--font-sm)', lineHeight: 1.7 }}>可能原因：{item.reason}</div>
-            <div style={{ color: 'var(--text-dim)', fontSize: 'var(--font-sm)', lineHeight: 1.7 }}>优化建议：{item.advice}</div>
-          </div>
-        ))}
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -157,35 +165,37 @@ function HistoryPlaybackPanel({ tagName }) {
   }, [tagName, hours, playbackStep]);
 
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: 6, display: 'flex', flexDirection: 'column', gridColumn: '1 / span 2' }}>
-      <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ color: '#fff', fontWeight: 600, fontSize: 'var(--font-md)' }}>历史趋势查询与回放</div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', color: 'var(--text-dim)', fontSize: 'var(--font-sm)' }}>
-          <label>时间范围
-            <select value={hours} onChange={(e) => setHours(Number(e.target.value))} style={{ marginLeft: 6, padding: '4px 8px', background: 'var(--surface-2, #18222d)', color: '#fff', border: '1px solid var(--border)', borderRadius: 4 }}>
-              {[3, 6, 12, 24, 48, 72].map((v) => <option key={v} value={v}>{v}h</option>)}
-            </select>
-          </label>
-          <label>回放步长
-            <select value={playbackStep} onChange={(e) => setPlaybackStep(Number(e.target.value))} style={{ marginLeft: 6, padding: '4px 8px', background: 'var(--surface-2, #18222d)', color: '#fff', border: '1px solid var(--border)', borderRadius: 4 }}>
-              {[1, 5, 10, 15, 30].map((v) => <option key={v} value={v}>{v}s</option>)}
-            </select>
-          </label>
+    <ChartPanel
+      title="历史趋势查询与回放"
+      subtitle="按时间范围和回放步长复核问题是否持续存在。"
+      actions={(
+        <div className="ui-filter-group">
+          <select className="ui-select" value={hours} onChange={(e) => setHours(Number(e.target.value))}>
+            {[3, 6, 12, 24, 48, 72].map((v) => <option key={v} value={v}>{v}h</option>)}
+          </select>
+          <select className="ui-select" value={playbackStep} onChange={(e) => setPlaybackStep(Number(e.target.value))}>
+            {[1, 5, 10, 15, 30].map((v) => <option key={v} value={v}>{v}s/步</option>)}
+          </select>
         </div>
-      </div>
-      {loading ? (
-        <div style={{ minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>加载中...</div>
-      ) : error ? (
-        <div style={{ minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)' }}>{error}</div>
-      ) : (
-        <TrendPanel trend={history?.trend} title={`历史趋势（近${history?.hours || hours}小时，${history?.playback_step || playbackStep}s/步）`} />
       )}
-    </div>
+      state={loading ? <StateBlock type="loading" title="历史趋势加载中" detail="正在读取持久化回放数据。" /> : error ? <StateBlock type="error" title="历史趋势加载失败" detail={error} /> : null}
+    >
+      {!loading && !error ? <TrendCanvas trend={history?.trend} title={`历史趋势（近${history?.hours || hours}小时，${history?.playback_step || playbackStep}s/步）`} /> : null}
+    </ChartPanel>
   );
 }
 
-function TrendPanel({ trend, title = '趋势图', height = 240 }) {
+function TrendPanel({ trend, title }) {
+  return (
+    <ChartPanel title={title} subtitle="先看 PV / SP / OP 的整体关系，再判断问题是否持续。">
+      <TrendCanvas trend={trend} title={title} />
+    </ChartPanel>
+  );
+}
+
+function TrendCanvas({ trend }) {
   const ref = useRef(null);
+
   useEffect(() => {
     if (!ref.current || !trend) return;
     const chart = echarts.init(ref.current, null, { renderer: 'canvas' });
@@ -197,26 +207,24 @@ function TrendPanel({ trend, title = '趋势图', height = 240 }) {
       const s = v % 60;
       return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
     });
-    const pv = trend.pv.filter((_, i) => i % step === 0);
-    const sp = trend.sp.filter((_, i) => i % step === 0);
-    const op = trend.op.filter((_, i) => i % step === 0);
 
     chart.setOption({
       backgroundColor: 'transparent',
-      grid: { top: 10, right: 60, bottom: 30, left: 50 },
+      grid: { top: 16, right: 24, bottom: 30, left: 42 },
       tooltip: { trigger: 'axis' },
-      xAxis: { type: 'category', data: labels, axisLine: { lineStyle: { color: '#253545' } }, axisLabel: { color: '#708090', fontSize: 10 } },
+      xAxis: { type: 'category', data: labels, axisLine: { lineStyle: { color: 'var(--chart-axis)' } }, axisLabel: { color: 'var(--text-tertiary)', fontSize: 10 } },
       yAxis: [
-        { type: 'value', axisLine: { lineStyle: { color: '#253545' } }, axisLabel: { color: '#708090', fontSize: 10 }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
-        { type: 'value', min: 0, max: 100, axisLine: { lineStyle: { color: '#253545' } }, axisLabel: { color: '#708090', fontSize: 10 } },
+        { type: 'value', axisLine: { lineStyle: { color: 'var(--chart-axis)' } }, axisLabel: { color: 'var(--text-tertiary)', fontSize: 10 }, splitLine: { lineStyle: { color: 'var(--chart-grid)' } } },
+        { type: 'value', min: 0, max: 100, axisLine: { lineStyle: { color: 'var(--chart-axis)' } }, axisLabel: { color: 'var(--text-tertiary)', fontSize: 10 } },
       ],
+      legend: { top: 0, right: 0, textStyle: { color: 'var(--text-secondary)', fontSize: 11 } },
       series: [
-        { name: 'PV', type: 'line', data: pv, smooth: true, lineStyle: { color: '#3498db', width: 2 }, symbol: 'none' },
-        { name: 'SP', type: 'line', data: sp, smooth: true, lineStyle: { color: '#f0a030', width: 2, type: 'dashed' }, symbol: 'none' },
-        { name: 'OP', type: 'line', yAxisIndex: 1, data: op, smooth: true, lineStyle: { color: '#2ecc71', width: 1.5 }, symbol: 'none' },
+        { name: 'PV', type: 'line', data: trend.pv.filter((_, i) => i % step === 0), smooth: true, lineStyle: { color: 'var(--chart-pv)', width: 2 }, symbol: 'none' },
+        { name: 'SP', type: 'line', data: trend.sp.filter((_, i) => i % step === 0), smooth: true, lineStyle: { color: 'var(--chart-sp)', width: 2, type: 'dashed' }, symbol: 'none' },
+        { name: 'OP', type: 'line', yAxisIndex: 1, data: trend.op.filter((_, i) => i % step === 0), smooth: true, lineStyle: { color: 'var(--chart-op)', width: 1.5 }, symbol: 'none' },
       ],
-      legend: { top: 5, right: 0, textStyle: { color: '#d0d8e0', fontSize: 11 } },
     });
+
     const handleResize = () => chart.resize();
     window.addEventListener('resize', handleResize);
     return () => {
@@ -225,27 +233,6 @@ function TrendPanel({ trend, title = '趋势图', height = 240 }) {
     };
   }, [trend]);
 
-  return (
-    <div style={{ background: 'var(--surface)', borderRadius: 6, display: 'flex', flexDirection: 'column', minHeight: height }}>
-      <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', color: '#fff', fontWeight: 600, fontSize: 'var(--font-md)' }}>{title}</div>
-      <div ref={ref} style={{ flex: 1, minHeight: height }} />
-    </div>
-  );
-}
-
-function InfoPanel({ info }) {
-  return (
-    <div style={{ background: 'var(--surface)', borderRadius: 6, padding: 16 }}>
-      <h3 style={{ color: '#fff', fontSize: 'var(--font-md)', marginBottom: 12 }}>回路信息</h3>
-      <div style={{ fontSize: 'var(--font-sm)', lineHeight: 2.2, color: 'var(--text-dim)' }}>
-        <div>位号: <span style={{ color: '#fff' }}>{info.tag_name || '—'}</span></div>
-        <div>装置: {info.unit || '—'}{info.sub_unit ? ` / ${info.sub_unit}` : ''}</div>
-        <div>描述: {info.description || '—'}</div>
-        <div>PV位号: {info.pv_tag || '—'} | SP位号: {info.sp_tag || '—'} | OP位号: {info.op_tag || '—'}</div>
-        <div>量程: {info.pv_lo != null && info.pv_hi != null ? `${info.pv_lo}–${info.pv_hi} ${info.eng_unit || ''}` : '—'} |
-            采样周期: {info.sample_interval || '—'}s |
-            死区时间: {info.dead_time_typical != null ? `~${info.dead_time_typical}s` : '—'}</div>
-      </div>
-    </div>
-  );
+  if (!trend) return <StateBlock type="empty" title="暂无趋势数据" detail="当前时间范围没有可展示的趋势样本。" />;
+  return <div ref={ref} style={{ flex: 1, minHeight: 280 }} />;
 }

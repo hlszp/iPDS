@@ -4,15 +4,19 @@ import { api } from '../../api/client';
 import SortableTable from '../../components/SortableTable';
 import LargeScreenToggle from '../../components/LargeScreenMode';
 import PlantTree from './PlantTree';
+import {
+  FilterBar,
+  FilterGroup,
+  GradePill,
+  LoopListItem,
+  MetricCard,
+  PageSection,
+  Panel,
+  StateBlock,
+  StatusBanner,
+} from '../../components/ui';
 
 const GRADE_ORDER = ['优', '良', '中', '差', '开环'];
-const GRADE_TONE = {
-  优: { bg: '#dcfce7', color: '#166534' },
-  良: { bg: '#dbeafe', color: '#1d4ed8' },
-  中: { bg: '#fef3c7', color: '#92400e' },
-  差: { bg: '#fee2e2', color: '#991b1b' },
-  开环: { bg: '#e5e7eb', color: '#475569' },
-};
 
 export default function Overview() {
   const navigate = useNavigate();
@@ -38,7 +42,9 @@ export default function Overview() {
     }
   }, []);
 
-  useEffect(() => { load(scopeFilter); }, [load, scopeFilter]);
+  useEffect(() => {
+    load(scopeFilter);
+  }, [load, scopeFilter]);
 
   const unitOptions = useMemo(() => {
     const seen = new Set();
@@ -73,9 +79,9 @@ export default function Overview() {
     setSearchParams(nextParams);
   };
 
-  if (loading) return <div style={st.state}>加载中...</div>;
-  if (error) return <div style={st.state}>{error} <button onClick={() => load(scopeFilter)} style={st.retry}>重试</button></div>;
-  if (!data) return <div style={st.state}>暂无数据</div>;
+  if (loading) return <StateBlock type="loading" title="总览数据加载中" detail="正在汇总当前筛选范围的回路健康、评分与重点问题。" />;
+  if (error) return <StateBlock type="error" title="总览数据加载失败" detail={error} action={<button type="button" className="ui-secondary-action" onClick={() => load(scopeFilter)}>重试</button>} />;
+  if (!data) return <StateBlock type="empty" title="暂无总览数据" detail="当前范围没有可展示的回路统计，请检查数据源或调整筛选范围。" />;
 
   let detailRows = data.detail_table || [];
   if (unitFilter) detailRows = detailRows.filter((row) => row.device_name === unitFilter);
@@ -99,169 +105,105 @@ export default function Overview() {
     { key: 'stability_rate', label: '平稳率(%)', align: 'right' },
   ];
 
-  const gradeCards = GRADE_ORDER.map((grade) => {
-    const count = detailRows.reduce((sum, row) => sum + ((row.grade_distribution || {})[grade] || 0), 0);
-    return { grade, count, tone: GRADE_TONE[grade] };
-  });
+  const gradeCards = GRADE_ORDER.map((grade) => ({
+    grade,
+    count: detailRows.reduce((sum, row) => sum + ((row.grade_distribution || {})[grade] || 0), 0),
+  }));
 
   const trust = data.runtime_provider || {};
   const worstLoops = [...(data.bottom_loops || [])].sort((a, b) => a.performance_score - b.performance_score);
+  const topLoops = data.top_loops || [];
 
   return (
-    <div style={st.page}>
-      <section style={st.heroGrid}>
-        <div style={st.heroCard}>
-          <div style={st.cardLabel}>运行数据状态</div>
-          <div style={st.heroValue}>{trust.degraded ? '已降级' : '正常'}</div>
-          <div style={st.cardText}>配置模式：{trust.configured_source || '—'} / 生效模式：{trust.effective_source || '—'}</div>
-          <div style={st.cardText}>回路覆盖：{trust.served_loop_count ?? 0}/{trust.expected_loop_count ?? 0}</div>
-        </div>
-        <div style={st.heroCard}>
-          <div style={st.cardLabel}>在线回路</div>
-          <div style={st.heroValue}>{data.auto_loops} / {data.total_loops}</div>
-          <div style={st.cardText}>自动回路 / 总回路</div>
-        </div>
-        <div style={st.heroCard}>
-          <div style={st.cardLabel}>上一整点评分</div>
-          <div style={st.heroValue}>{data.prev_hour_kpi?.performance_score ?? '—'}</div>
-          <div style={st.cardText}>自控率 {data.prev_hour_kpi?.auto_control_rate ?? '—'}% · 平稳率 {data.prev_hour_kpi?.stability_rate ?? '—'}%</div>
-        </div>
-        <div style={st.heroCardWide}>
-          <div style={st.cardLabel}>状态说明</div>
-          <div style={st.cardTitle}>正式产品视图仅展示真实数据链路结果</div>
-          <div style={st.cardText}>{trust.fallback_reason || trust.detail || '当前未获取到运行数据说明。'}</div>
-          <div style={st.heroActions}><LargeScreenToggle /></div>
-        </div>
+    <div className="ui-stack">
+      <section className="ui-summary-grid">
+        <MetricCard label="运行状态" value={trust.degraded ? '已降级' : '正常'} detail={`配置 ${trust.configured_source || '—'} / 生效 ${trust.effective_source || '—'}`} tone={trust.degraded ? 'warn' : 'default'} />
+        <MetricCard label="在线回路" value={`${data.auto_loops} / ${data.total_loops}`} detail="自动回路 / 总回路" />
+        <MetricCard label="上一整点评分" value={data.prev_hour_kpi?.performance_score ?? '—'} detail={`自控率 ${data.prev_hour_kpi?.auto_control_rate ?? '—'}% · 平稳率 ${data.prev_hour_kpi?.stability_rate ?? '—'}%`} />
+        <MetricCard label="下一步" value={worstLoops[0]?.tag_name || '—'} detail="优先进入低分回路详情，确认原因并推进整定。" />
       </section>
 
-      <section style={st.bodyGrid}>
-        <div style={st.panel}>
-          <div style={st.panelHeader}>
-            <div>
-              <div style={st.panelTitle}>装置导航</div>
-              <div style={st.panelSub}>按工厂 / 装置 / 回路组筛选全局视图</div>
-            </div>
-          </div>
-          <div style={st.panelBody}><PlantTree onSelect={handleTreeSelect} /></div>
-        </div>
+      <StatusBanner
+        tone={trust.degraded ? 'warn' : 'ok'}
+        items={[
+          { label: '配置模式', value: trust.configured_source || '—' },
+          { label: '当前生效', value: trust.effective_source || '—' },
+          { label: '回路覆盖', value: `${trust.served_loop_count ?? 0}/${trust.expected_loop_count ?? 0}` },
+        ]}
+        detail={trust.fallback_reason || trust.detail || '当前未获取到运行数据说明。'}
+        actions={<LargeScreenToggle />}
+      />
 
-        <div style={st.panelWide}>
-          <div style={st.panelHeader}>
-            <div>
-              <div style={st.panelTitle}>等级分布概览</div>
-              <div style={st.panelSub}>按当前筛选范围统计各等级回路数量</div>
-            </div>
-          </div>
-          <div style={st.gradeGrid}>
+      <PageSection columns="tight">
+        <Panel title="装置导航" subtitle="按工厂 / 装置 / 回路组筛选全局视图">
+          <PlantTree onSelect={handleTreeSelect} />
+        </Panel>
+        <Panel title="等级分布概览" subtitle="按当前筛选范围快速定位风险等级分布">
+          <div className="ui-grade-grid">
             {gradeCards.map((item) => (
-              <button key={item.grade} onClick={() => setGradeFilter((prev) => prev === item.grade ? '' : item.grade)} style={{ ...st.gradeCard, background: item.tone.bg, color: item.tone.color, borderColor: gradeFilter === item.grade ? item.tone.color : 'transparent' }}>
-                <div style={st.gradeName}>{item.grade}</div>
-                <div style={st.gradeCount}>{item.count}</div>
-              </button>
+              <GradePill
+                key={item.grade}
+                grade={item.grade}
+                count={item.count}
+                active={gradeFilter === item.grade}
+                onClick={() => setGradeFilter((prev) => (prev === item.grade ? '' : item.grade))}
+              />
             ))}
           </div>
-        </div>
-      </section>
+        </Panel>
+      </PageSection>
 
-      <section style={st.bottomGrid}>
-        <div style={st.panelLarge}>
-          <div style={st.panelHeaderRow}>
-            <div>
-              <div style={st.panelTitle}>装置 / 回路组详情</div>
-              <div style={st.panelSub}>聚合查看评分、自控率、平稳率与等级分布</div>
-            </div>
-            <div style={st.filters}>
-              <select value={unitFilter} onChange={(e) => handleUnitChange(e.target.value)} style={st.select}>
-                <option value="">全部装置</option>
-                {unitOptions.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
-              </select>
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索工厂 / 装置 / 回路组" style={st.input} />
-            </div>
-          </div>
+      <PageSection columns="sidebar">
+        <Panel
+          title="装置 / 回路组详情"
+          subtitle="聚合查看评分、自控率、平稳率与等级分布，快速回答问题集中在哪。"
+          actions={(
+            <FilterBar align="right">
+              <FilterGroup>
+                <select className="ui-select" value={unitFilter} onChange={(e) => handleUnitChange(e.target.value)}>
+                  <option value="">全部装置</option>
+                  {unitOptions.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+                </select>
+                <input className="ui-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索工厂 / 装置 / 回路组" />
+              </FilterGroup>
+            </FilterBar>
+          )}
+          padded={false}
+        >
           <SortableTable columns={detailCols} rows={detailRows} defaultSort={{ key: 'avg_performance_score', dir: 'desc' }} emptyText="暂无回路组数据" />
-        </div>
+        </Panel>
 
-        <div style={st.sideColumn}>
-          <div style={st.panel}>
-            <div style={st.panelHeader}>
-              <div>
-                <div style={st.panelTitle}>重点改善回路</div>
-                <div style={st.panelSub}>优先关注低分回路并进入详情</div>
-              </div>
-            </div>
-            <div style={st.listBody}>
+        <div className="ui-stack">
+          <Panel title="重点改善回路" subtitle="优先关注低分回路并进入分析详情。">
+            <div className="ui-list">
               {worstLoops.map((loop) => (
-                <button key={loop.tag_name} onClick={() => navigate(`/assessment/${loop.tag_name}`)} style={st.loopItem}>
-                  <div>
-                    <div style={st.loopName}>{loop.tag_name}</div>
-                    <div style={st.loopMeta}>{loop.unit || '未分配装置'}</div>
-                  </div>
-                  <div style={st.loopScore}>{loop.performance_score}</div>
-                </button>
+                <LoopListItem
+                  key={loop.tag_name}
+                  title={loop.tag_name}
+                  meta={loop.unit || '未分配装置'}
+                  value={loop.performance_score}
+                  tone="danger"
+                  onClick={() => navigate(`/assessment/${loop.tag_name}`)}
+                />
               ))}
             </div>
-          </div>
-
-          <div style={st.panel}>
-            <div style={st.panelHeader}>
-              <div>
-                <div style={st.panelTitle}>最佳表现回路</div>
-                <div style={st.panelSub}>用于对标当前运行标杆</div>
-              </div>
-            </div>
-            <div style={st.listBody}>
-              {(data.top_loops || []).map((loop) => (
-                <div key={loop.tag_name} style={st.loopStaticItem}>
-                  <div>
-                    <div style={st.loopName}>{loop.tag_name}</div>
-                    <div style={st.loopMeta}>{loop.unit || '未分配装置'}</div>
-                  </div>
-                  <div style={st.goodScore}>{loop.performance_score}</div>
-                </div>
+          </Panel>
+          <Panel title="最佳表现回路" subtitle="用于对标当前运行标杆。">
+            <div className="ui-list">
+              {topLoops.map((loop) => (
+                <LoopListItem
+                  key={loop.tag_name}
+                  title={loop.tag_name}
+                  meta={loop.unit || '未分配装置'}
+                  value={loop.performance_score}
+                  tone="success"
+                  secondary
+                />
               ))}
             </div>
-          </div>
+          </Panel>
         </div>
-      </section>
+      </PageSection>
     </div>
   );
 }
-
-const st = {
-  page: { display: 'flex', flexDirection: 'column', gap: 18 },
-  state: { color: 'var(--text-subtle)', padding: 24 },
-  retry: { marginLeft: 8, border: '1px solid var(--line)', background: '#fff', borderRadius: 8, padding: '4px 10px', color: 'var(--text-muted)' },
-  heroGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16 },
-  heroCard: { background: '#fff', border: '1px solid var(--line)', borderRadius: 16, padding: 18, boxShadow: 'var(--panel-shadow)' },
-  heroCardWide: { background: '#fff', border: '1px solid var(--line)', borderRadius: 16, padding: 18, boxShadow: 'var(--panel-shadow)' },
-  cardLabel: { fontSize: 12, color: 'var(--text-subtle)', marginBottom: 10 },
-  heroValue: { fontSize: 30, fontWeight: 800, color: 'var(--text-strong)' },
-  cardTitle: { fontSize: 18, fontWeight: 700, color: 'var(--text-strong)', marginBottom: 8 },
-  cardText: { marginTop: 8, fontSize: 13, color: 'var(--text-subtle)', lineHeight: 1.7 },
-  heroActions: { marginTop: 14, display: 'flex', justifyContent: 'flex-end' },
-  bodyGrid: { display: 'grid', gridTemplateColumns: '320px minmax(0, 1fr)', gap: 16 },
-  bottomGrid: { display: 'grid', gridTemplateColumns: 'minmax(0, 1.45fr) 360px', gap: 16 },
-  sideColumn: { display: 'grid', gap: 16 },
-  panel: { background: '#fff', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--panel-shadow)', overflow: 'hidden' },
-  panelWide: { background: '#fff', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--panel-shadow)', overflow: 'hidden' },
-  panelLarge: { background: '#fff', border: '1px solid var(--line)', borderRadius: 16, boxShadow: 'var(--panel-shadow)', overflow: 'hidden' },
-  panelHeader: { padding: '16px 18px 0' },
-  panelHeaderRow: { padding: '16px 18px 12px', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' },
-  panelTitle: { fontSize: 16, fontWeight: 700, color: 'var(--text-strong)' },
-  panelSub: { marginTop: 6, fontSize: 12, color: 'var(--text-subtle)' },
-  panelBody: { padding: 18 },
-  gradeGrid: { padding: 18, display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12 },
-  gradeCard: { border: '2px solid transparent', borderRadius: 14, padding: 16, textAlign: 'left' },
-  gradeName: { fontSize: 13, fontWeight: 700, marginBottom: 12 },
-  gradeCount: { fontSize: 28, fontWeight: 800 },
-  filters: { display: 'flex', gap: 10, flexWrap: 'wrap' },
-  select: { minWidth: 140, height: 38, borderRadius: 10, border: '1px solid var(--line)', background: '#fff', color: 'var(--text-strong)', padding: '0 10px' },
-  input: { width: 220, height: 38, borderRadius: 10, border: '1px solid var(--line)', background: '#fff', color: 'var(--text-strong)', padding: '0 12px' },
-  listBody: { padding: 18, display: 'grid', gap: 10 },
-  loopItem: { border: '1px solid var(--line)', background: '#fff', borderRadius: 12, padding: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left' },
-  loopStaticItem: { border: '1px solid var(--line)', background: 'var(--panel-muted)', borderRadius: 12, padding: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  loopName: { fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' },
-  loopMeta: { marginTop: 4, fontSize: 12, color: 'var(--text-subtle)' },
-  loopScore: { fontSize: 24, fontWeight: 800, color: 'var(--red)' },
-  goodScore: { fontSize: 24, fontWeight: 800, color: 'var(--green-strong)' },
-};

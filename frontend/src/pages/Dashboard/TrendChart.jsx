@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import * as echarts from 'echarts';
+import { echarts } from '../../lib/echarts-line';
 
 const COLORS = ['#3498db', '#f0a030', '#2ecc71', '#e74c3c', '#9b59b6'];
 
