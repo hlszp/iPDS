@@ -1,4 +1,5 @@
 const BASE = '/api';
+const responseCache = new Map();
 
 async function parseError(res) {
   try {
@@ -27,6 +28,26 @@ async function request(path, options = {}) {
   if (res.status === 204) return null;
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
+}
+
+function clearCache(keys = []) {
+  keys.forEach((key) => responseCache.delete(key));
+}
+
+function cachedRequest(key, loader) {
+  const hit = responseCache.get(key);
+  if (hit) return hit;
+  const pending = loader()
+    .then((data) => {
+      responseCache.set(key, Promise.resolve(data));
+      return data;
+    })
+    .catch((error) => {
+      responseCache.delete(key);
+      throw error;
+    });
+  responseCache.set(key, pending);
+  return pending;
 }
 
 async function requestFile(path, options = {}) {
@@ -76,15 +97,19 @@ export const api = {
   getCommissioningReadiness: (unit) => request(withQuery('/commissioning/readiness', { unit })),
 
   // Features
-  listFeatures: () => request('/features'),
-  updateFeature: (key, enabled) => request(`/features/${key}?enabled=${enabled}`, { method: 'PUT' }),
+  listFeatures: () => cachedRequest('features', () => request('/features')),
+  updateFeature: async (key, enabled) => {
+    const result = await request(`/features/${key}?enabled=${enabled}`, { method: 'PUT' });
+    clearCache(['features']);
+    return result;
+  },
 
   // Reports
   generateLoopReport: (tag) => requestFile(`/reports/loop/${tag}`),
   generateBatchReport: (unit, period) => requestFile(`/reports/batch?unit=${encodeURIComponent(unit || '全厂')}&period=${encodeURIComponent(period || '日报')}`),
 
   // Plant & Device hierarchy
-  getPlantTree: () => request('/plants/tree'),
+  getPlantTree: () => cachedRequest('plant-tree', () => request('/plants/tree')),
   listPlants: () => request('/plants'),
   createPlant: (data) => request('/plants', { method: 'POST', body: JSON.stringify(data) }),
   updatePlant: (id, data) => request(`/plants/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -95,8 +120,12 @@ export const api = {
   deleteDevice: (id) => request(`/devices/${id}`, { method: 'DELETE' }),
 
   // Runtime source
-  getRuntimeSource: () => request('/production/runtime-source'),
-  updateRuntimeSource: (source) => request('/production/runtime-source', { method: 'PUT', body: JSON.stringify({ source }) }),
+  getRuntimeSource: () => cachedRequest('runtime-source', () => request('/production/runtime-source')),
+  updateRuntimeSource: async (source) => {
+    const result = await request('/production/runtime-source', { method: 'PUT', body: JSON.stringify({ source }) });
+    clearCache(['runtime-source']);
+    return result;
+  },
   validateRuntimeSource: () => request('/production/runtime-source/validate', { method: 'POST' }),
 
   // Overview & Monitoring
