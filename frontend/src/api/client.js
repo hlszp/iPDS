@@ -1,5 +1,7 @@
 const BASE = '/api';
 const responseCache = new Map();
+const timedCache = new Map();
+const TTL_10_SECONDS = 10_000;
 
 async function parseError(res) {
   try {
@@ -31,7 +33,10 @@ async function request(path, options = {}) {
 }
 
 function clearCache(keys = []) {
-  keys.forEach((key) => responseCache.delete(key));
+  keys.forEach((key) => {
+    responseCache.delete(key);
+    timedCache.delete(key);
+  });
 }
 
 function cachedRequest(key, loader) {
@@ -47,6 +52,24 @@ function cachedRequest(key, loader) {
       throw error;
     });
   responseCache.set(key, pending);
+  return pending;
+}
+
+function cachedRequestWithTtl(key, ttlMs, loader) {
+  const now = Date.now();
+  const hit = timedCache.get(key);
+  if (hit && hit.expiresAt > now) return hit.value;
+  const pending = loader()
+    .then((data) => {
+      const value = Promise.resolve(data);
+      timedCache.set(key, { value, expiresAt: Date.now() + ttlMs });
+      return data;
+    })
+    .catch((error) => {
+      timedCache.delete(key);
+      throw error;
+    });
+  timedCache.set(key, { value: pending, expiresAt: now + ttlMs });
   return pending;
 }
 
@@ -131,11 +154,11 @@ export const api = {
 
   // Overview & Monitoring
   getOverview: (params = {}) => request(withQuery('/overview/summary', params)),
-  getMonitoringRealtime: (params = {}) => request(withQuery('/monitoring/realtime', params)),
-  getMonitoringHistory: (params = {}) => request(withQuery('/monitoring/history', params)),
+  getMonitoringRealtime: (params = {}) => cachedRequestWithTtl(`monitoring-realtime:${JSON.stringify(params)}`, TTL_10_SECONDS, () => request(withQuery('/monitoring/realtime', params))),
+  getMonitoringHistory: (params = {}) => cachedRequestWithTtl(`monitoring-history:${JSON.stringify(params)}`, TTL_10_SECONDS, () => request(withQuery('/monitoring/history', params))),
 
   // Assessment
-  getAssessmentRealtime: (params = {}) => request(withQuery('/assessment/realtime', params)),
+  getAssessmentRealtime: (params = {}) => cachedRequestWithTtl(`assessment-realtime:${JSON.stringify(params)}`, TTL_10_SECONDS, () => request(withQuery('/assessment/realtime', params))),
   getRadar: (tag) => request(`/assessment/${tag}/radar`),
   getSuggestions: (tag) => request(`/assessment/${tag}/suggestions`),
 
