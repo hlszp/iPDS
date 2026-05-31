@@ -115,14 +115,14 @@ export default function Monitoring() {
               {loadingRealtime ? (
                 <StateBlock type="loading" title="实时监控加载中" detail="正在拉取当前窗口内的回路评分与运行表现。" />
               ) : errorRealtime ? (
-                <StateBlock type="error" title="实时监控加载失败" detail={errorRealtime} />
+                <StateBlock type="error" title="实时监控加载失败" detail={errorRealtime} action={<button type="button" className="ui-secondary-action" onClick={() => window.location.reload()}>重新加载页面</button>} />
               ) : (
                 <SortableTable
                   columns={REALTIME_COLS}
                   rows={rows}
                   defaultSort={{ key: 'performance_score', dir: 'asc' }}
                   emptyText="暂无回路数据"
-                  onRowClick={(row) => nav(`/assessment/${row.tag_name}`)}
+                  onRowClick={(row) => nav(`/assessment/${row.tag_name}`, { state: { sourceTitle: '实时监控', returnLabel: '返回实时监控', returnTo: '/monitoring' } })}
                 />
               )}
             </div>
@@ -138,7 +138,7 @@ export default function Monitoring() {
                     meta={`${loop.unit || '未分配装置'} · ${loop.grade}`}
                     value={loop.performance_score}
                     tone="danger"
-                    onClick={() => nav(`/assessment/${loop.tag_name}`)}
+                    onClick={() => nav(`/assessment/${loop.tag_name}`, { state: { sourceTitle: '当前风险关注', returnLabel: '返回实时监控', returnTo: '/monitoring' } })}
                   />
                 ))}
               </div>
@@ -181,7 +181,7 @@ export default function Monitoring() {
             {loadingHistory ? (
               <StateBlock type="loading" title="历史统计加载中" detail="正在拉取所选维度的持久化监控快照。" />
             ) : errorHistory ? (
-              <StateBlock type="error" title="历史统计加载失败" detail={errorHistory} />
+              <StateBlock type="error" title="历史统计加载失败" detail={errorHistory} action={<button type="button" className="ui-secondary-action" onClick={() => setDim(dim)}>重试当前维度</button>} />
             ) : (
               <SortableTable columns={HISTORY_COLS} rows={history.map((point) => ({ ...point, trust: point.trust }))} emptyText="暂无历史统计数据" />
             )}

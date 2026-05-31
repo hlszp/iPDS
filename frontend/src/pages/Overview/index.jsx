@@ -5,6 +5,7 @@ import SortableTable from '../../components/SortableTable';
 import LargeScreenToggle from '../../components/LargeScreenMode';
 import PlantTree from './PlantTree';
 import {
+  DataHero,
   FilterBar,
   FilterGroup,
   GradePill,
@@ -12,11 +13,34 @@ import {
   MetricCard,
   PageSection,
   Panel,
+  SectionCaption,
   StateBlock,
-  StatusBanner,
+  WorkbenchRail,
 } from '../../components/ui';
 
 const GRADE_ORDER = ['优', '良', '中', '差', '开环'];
+
+function OverviewSkeleton() {
+  return (
+    <div className="ui-stack">
+      <div className="ui-skeleton-hero">
+        <div className="ui-skeleton-block ui-skeleton-block--title" />
+        <div className="ui-skeleton-block ui-skeleton-block--text" />
+        <div className="ui-summary-grid">
+          {Array.from({ length: 4 }).map((_, index) => <div key={index} className="ui-skeleton-card" />)}
+        </div>
+      </div>
+      <div className="ui-page-section ui-page-section--sidebar">
+        <div className="ui-skeleton-card ui-skeleton-card--tall" />
+        <div className="ui-skeleton-card ui-skeleton-card--table" />
+        <div className="ui-stack">
+          <div className="ui-skeleton-card" />
+          <div className="ui-skeleton-card" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Overview() {
   const navigate = useNavigate();
@@ -79,7 +103,7 @@ export default function Overview() {
     setSearchParams(nextParams);
   };
 
-  if (loading) return <StateBlock type="loading" title="总览数据加载中" detail="正在汇总当前筛选范围的回路健康、评分与重点问题。" />;
+  if (loading) return <OverviewSkeleton />;
   if (error) return <StateBlock type="error" title="总览数据加载失败" detail={error} action={<button type="button" className="ui-secondary-action" onClick={() => load(scopeFilter)}>重试</button>} />;
   if (!data) return <StateBlock type="empty" title="暂无总览数据" detail="当前范围没有可展示的回路统计，请检查数据源或调整筛选范围。" />;
 
@@ -111,70 +135,67 @@ export default function Overview() {
   }));
 
   const trust = data.runtime_provider || {};
-  const worstLoops = [...(data.bottom_loops || [])].sort((a, b) => a.performance_score - b.performance_score);
-  const topLoops = data.top_loops || [];
+  const worstLoops = [...(data.bottom_loops || [])].sort((a, b) => a.performance_score - b.performance_score).slice(0, 5);
+  const topLoops = (data.top_loops || []).slice(0, 5);
 
   return (
     <div className="ui-stack">
-      <section className="ui-summary-grid">
+      <DataHero
+        title="生产运行总览"
+        subtitle="把装置范围、等级分布、回路组评分和重点对象放进同一张主控台，支持 1920×1080 下快速扫读和定位。"
+        aside={(
+          <div className="ui-stack">
+            <SectionCaption kicker="操作焦点" title={worstLoops[0]?.tag_name || '—'} detail="优先进入低分回路详情，确认原因并推进整定。" actions={<LargeScreenToggle />} />
+          </div>
+        )}
+      >
         <MetricCard label="运行状态" value={trust.degraded ? '已降级' : '正常'} detail={`配置 ${trust.configured_source || '—'} / 生效 ${trust.effective_source || '—'}`} tone={trust.degraded ? 'warn' : 'default'} />
         <MetricCard label="在线回路" value={`${data.auto_loops} / ${data.total_loops}`} detail="自动回路 / 总回路" />
         <MetricCard label="上一整点评分" value={data.prev_hour_kpi?.performance_score ?? '—'} detail={`自控率 ${data.prev_hour_kpi?.auto_control_rate ?? '—'}% · 平稳率 ${data.prev_hour_kpi?.stability_rate ?? '—'}%`} />
-        <MetricCard label="下一步" value={worstLoops[0]?.tag_name || '—'} detail="优先进入低分回路详情，确认原因并推进整定。" />
-      </section>
-
-      <StatusBanner
-        tone={trust.degraded ? 'warn' : 'ok'}
-        items={[
-          { label: '配置模式', value: trust.configured_source || '—' },
-          { label: '当前生效', value: trust.effective_source || '—' },
-          { label: '回路覆盖', value: `${trust.served_loop_count ?? 0}/${trust.expected_loop_count ?? 0}` },
-        ]}
-        detail={trust.fallback_reason || trust.detail || '当前未获取到运行数据说明。'}
-        actions={<LargeScreenToggle />}
-      />
-
-      <PageSection columns="tight">
-        <Panel title="装置导航" subtitle="按工厂 / 装置 / 回路组筛选全局视图">
-          <PlantTree onSelect={handleTreeSelect} />
-        </Panel>
-        <Panel title="等级分布概览" subtitle="按当前筛选范围快速定位风险等级分布">
-          <div className="ui-grade-grid">
-            {gradeCards.map((item) => (
-              <GradePill
-                key={item.grade}
-                grade={item.grade}
-                count={item.count}
-                active={gradeFilter === item.grade}
-                onClick={() => setGradeFilter((prev) => (prev === item.grade ? '' : item.grade))}
-              />
-            ))}
-          </div>
-        </Panel>
-      </PageSection>
+        <MetricCard label="重点风险对象" value={worstLoops[0]?.tag_name || '—'} detail={worstLoops[0]?.unit || '当前范围暂无重点回路'} tone="warn" />
+      </DataHero>
 
       <PageSection columns="sidebar">
-        <Panel
-          title="装置 / 回路组详情"
-          subtitle="聚合查看评分、自控率、平稳率与等级分布，快速回答问题集中在哪。"
-          actions={(
-            <FilterBar align="right">
-              <FilterGroup>
-                <select className="ui-select" value={unitFilter} onChange={(e) => handleUnitChange(e.target.value)}>
-                  <option value="">全部装置</option>
-                  {unitOptions.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
-                </select>
-                <input className="ui-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索工厂 / 装置 / 回路组" />
-              </FilterGroup>
-            </FilterBar>
-          )}
-          padded={false}
-        >
-          <SortableTable columns={detailCols} rows={detailRows} defaultSort={{ key: 'avg_performance_score', dir: 'desc' }} emptyText="暂无回路组数据" />
-        </Panel>
+        <WorkbenchRail title="装置导航" subtitle="先缩小范围，再看等级与回路组表现。">
+          <PlantTree onSelect={handleTreeSelect} />
+        </WorkbenchRail>
 
         <div className="ui-stack">
-          <Panel title="重点改善回路" subtitle="优先关注低分回路并进入分析详情。">
+          <Panel
+            title="等级分布与回路组表现"
+            subtitle="中间主表是这张页面的操作中心，先定位装置与回路组，再进入单回路分析。"
+            actions={(
+              <FilterBar align="right">
+                <FilterGroup>
+                  <select className="ui-select" value={unitFilter} onChange={(e) => handleUnitChange(e.target.value)}>
+                    <option value="">全部装置</option>
+                    {unitOptions.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+                  </select>
+                  <input className="ui-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索工厂 / 装置 / 回路组" />
+                </FilterGroup>
+              </FilterBar>
+            )}
+            padded={false}
+          >
+            <div className="ui-panel__body ui-stack">
+              <div className="ui-grade-grid">
+                {gradeCards.map((item) => (
+                  <GradePill
+                    key={item.grade}
+                    grade={item.grade}
+                    count={item.count}
+                    active={gradeFilter === item.grade}
+                    onClick={() => setGradeFilter((prev) => (prev === item.grade ? '' : item.grade))}
+                  />
+                ))}
+              </div>
+              <SortableTable columns={detailCols} rows={detailRows} defaultSort={{ key: 'avg_performance_score', dir: 'desc' }} emptyText="暂无回路组数据" />
+            </div>
+          </Panel>
+        </div>
+
+        <div className="ui-stack">
+          <Panel title="重点改善回路" subtitle="优先处理低分对象。">
             <div className="ui-list">
               {worstLoops.map((loop) => (
                 <LoopListItem
@@ -188,7 +209,7 @@ export default function Overview() {
               ))}
             </div>
           </Panel>
-          <Panel title="最佳表现回路" subtitle="用于对标当前运行标杆。">
+          <Panel title="最佳表现回路" subtitle="用于对标当前标杆。">
             <div className="ui-list">
               {topLoops.map((loop) => (
                 <LoopListItem

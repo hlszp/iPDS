@@ -180,6 +180,17 @@ def test_tuning_pipeline_returns_results(client):
     assert len(body["step_response"]["time"]) > 0
 
 
+def test_assessment_suggestions_returns_payload(client):
+    response = client.get("/api/assessment/FIC-10023/suggestions")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tag_name"] == "FIC-10023"
+    assert "suggestion" in body
+    assert "title" in body["suggestion"]
+    assert "suggestions" in body["suggestion"]
+
+
 def test_monitoring_history_reads_persisted_aggregates(client, db_session):
     base = datetime(2026, 5, 1, 0, 0, 0)
     for idx in range(24):

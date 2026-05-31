@@ -1,14 +1,17 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { echarts } from '../../lib/echarts-line';
 import { api } from '../../api/client';
 import {
   BackAction,
   ChartPanel,
+  DataHero,
   Panel,
   PrimaryAction,
+  SectionCaption,
   StateBlock,
   StatusBanner,
+  WorkbenchRail,
 } from '../../components/ui';
 
 const METHODS = [
@@ -87,29 +90,61 @@ export default function TuningWorkspace() {
       ? { tone: 'neutral', label: '中' }
       : { tone: 'warn', label: '低' };
 
+  const resultHighlights = useMemo(() => {
+    if (!result?.simulation_result || !result?.pid_params) return [];
+    return [
+      {
+        label: '调节时间',
+        value: `${result.simulation_result.settling_time.toFixed(0)}s`,
+        detail: result.simulation_result.settling_time <= 180 ? '满足快速收敛' : '仍偏慢，注意负荷切换响应',
+      },
+      {
+        label: '超调量',
+        value: `${result.simulation_result.overshoot_pct.toFixed(1)}%`,
+        detail: result.simulation_result.overshoot_pct <= 10 ? '冲击受控' : '注意投用瞬态冲击',
+      },
+      {
+        label: '参数组合',
+        value: `Kc ${result.pid_params.Kc.toFixed(2)} / Ti ${result.pid_params.Ti.toFixed(0)}s`,
+        detail: `Td ${result.pid_params.Td.toFixed(1)}s · τc ${result.pid_params.closed_loop_tau.toFixed(0)}s`,
+      },
+    ];
+  }, [result]);
+
   return (
     <div className="ui-stack">
-      <Panel
+      <DataHero
         title={`${tagName} · PID 整定工作台`}
-        subtitle="先确认模型与激励可信度，再看参数建议和仿真风险，最后决定是否适合投用。"
-        actions={(
-          <>
-            <BackAction onClick={() => nav(`/loop/${tagName}`)}>返回详情</BackAction>
-            <PrimaryAction onClick={runTuning} disabled={loading}>{loading ? '计算中...' : '计算 PID 参数'}</PrimaryAction>
-          </>
+        subtitle="把方法选择、模型证据、参数建议和闭环仿真整合到同一张工程工作台里，减少空白等待感。"
+        aside={(
+          <div className="ui-stack">
+            <SectionCaption
+              kicker="执行动作"
+              title={METHODS.find((item) => item.key === method)?.label || '整定方法'}
+              detail={loading ? '正在计算 PID 参数与闭环仿真结果。' : '确认激励状态后可直接执行整定。'}
+              actions={(
+                <>
+                  <BackAction onClick={() => nav(`/loop/${tagName}`)}>返回详情</BackAction>
+                  <PrimaryAction onClick={runTuning} disabled={loading}>{loading ? '计算中...' : '计算 PID 参数'}</PrimaryAction>
+                </>
+              )}
+            />
+          </div>
         )}
       >
-        {excInfo ? (
-          <StatusBanner
-            tone={excInfo.excitation_sufficient ? 'ok' : 'warn'}
-            items={[{ label: '激励条件', value: excInfo.excitation_sufficient ? '充足' : '不足' }]}
-            detail={excInfo.message}
-          />
-        ) : null}
-      </Panel>
+        <StatusBanner
+          tone={excInfo?.excitation_sufficient ? 'ok' : 'warn'}
+          items={[
+            { label: '激励条件', value: excInfo?.excitation_sufficient ? '充足' : '待确认' },
+            { label: '当前方法', value: METHODS.find((item) => item.key === method)?.label || '—' },
+            { label: '工作状态', value: loading ? '计算中' : result ? '已生成结果' : '待执行' },
+          ]}
+          detail={excInfo?.message || '正在读取激励信息，确认后即可执行整定。'}
+        />
+      </DataHero>
 
       <div className="ui-shell-grid ui-shell-grid--aside">
-        <div className="ui-stack">
+        <WorkbenchRail title="方法与结果摘要" subtitle="左侧保留方法选择与证据摘要，右侧固定展示主仿真工作区。">
           <Panel title="整定方法" subtitle="按现场目标选择更平衡、更保守或更积极的参数策略。">
             <div className="ui-radio-list">
               {METHODS.map((item) => (
@@ -128,7 +163,7 @@ export default function TuningWorkspace() {
             {error ? (
               <StateBlock type="error" title="整定计算失败" detail={error} />
             ) : !result ? (
-              <StateBlock type="empty" title="尚未生成整定结果" detail="先选择策略并计算 PID 参数，系统才会输出模型与仿真结论。" />
+              <StateBlock type="empty" title="等待整定结果" detail="执行计算后，系统会在这里展示辨识模型、拟合质量与激励指数。" />
             ) : (
               <div className="ui-stack">
                 <div className="ui-callout">
@@ -150,7 +185,7 @@ export default function TuningWorkspace() {
             {error ? (
               <StateBlock type="error" title="暂无参数建议" detail="当前请求没有返回有效整定结果，请先解决接口错误或检查回路数据。" />
             ) : !result ? (
-              <StateBlock type="empty" title="暂无参数建议" detail="计算完成后，这里会展示 Kc、Ti、Td 及闭环时间常数。" />
+              <StateBlock type="empty" title="等待参数输出" detail="计算完成后，这里会展示 Kc、Ti、Td 及闭环时间常数。" />
             ) : (
               <div className="ui-key-value">
                 <div>Kc = <strong>{result.pid_params?.Kc.toFixed(3)}</strong></div>
@@ -159,6 +194,16 @@ export default function TuningWorkspace() {
               </div>
             )}
           </Panel>
+
+          {!result ? (
+            <Panel title="投用前检查" subtitle="先确认约束与预期，再进入仿真判读。">
+              <div className="ui-key-value">
+                <div>当前方法：<strong>{METHODS.find((item) => item.key === method)?.label || '—'}</strong></div>
+                <div>激励状态：<strong>{excInfo?.excitation_sufficient ? '可直接计算' : '建议先复核'}</strong></div>
+                <div>输出顺序：<strong>模型 → 参数 → 仿真 → 投用建议</strong></div>
+              </div>
+            </Panel>
+          ) : null}
 
           {result?.simulation_result ? (
             <Panel title="投用建议" subtitle="用仿真结果判断这组参数是否适合现场实施。">
@@ -176,14 +221,36 @@ export default function TuningWorkspace() {
               </div>
             </Panel>
           ) : null}
-        </div>
+        </WorkbenchRail>
 
         <ChartPanel
-          title="闭环仿真预览"
-          subtitle="把参数建议转成可感知的趋势变化，再决定是否投用。"
-          state={error ? <StateBlock type="error" title="暂无仿真图" detail="接口当前返回错误，暂时无法生成闭环仿真。" /> : !result ? <StateBlock type="empty" title="暂无仿真图" detail="计算完成后，这里会展示 SP / PV / OP 的闭环响应。" /> : null}
+          title="闭环仿真主工作区"
+          subtitle="右侧始终保留主画布。未运行前说明将显示什么，运行后直接进入结果判读。"
+          minHeight={520}
+          state={error ? <StateBlock type="error" title="闭环仿真生成失败" detail="接口当前返回错误，暂时无法生成闭环仿真，请先检查数据与后端状态。" /> : !result ? <div className="ui-sim-placeholder"><div className="ui-sim-placeholder__headline">等待仿真结果</div><div className="ui-sim-placeholder__detail">执行计算后，这里会显示 SP / PV / OP 的闭环响应，以及是否适合现场投用的主判断依据。</div><div className="ui-sim-placeholder__legend"><span>SP · 目标</span><span>PV · 过程响应</span><span>OP · 阀位输出</span><span>先看超调与调节时间</span></div></div> : null}
         >
-          {result ? <div ref={chartRef} style={{ flex: 1, minHeight: 320 }} /> : null}
+          {result ? (
+            <>
+              <div className="ui-shell-grid ui-shell-grid--two" style={{ padding: '14px 16px 0' }}>
+                {resultHighlights.map((item) => (
+                  <div key={item.label} className="ui-stat-card">
+                    <div className="ui-stat-card__label">{item.label}</div>
+                    <div className="ui-stat-card__value">{item.value}</div>
+                    <div className="ui-stat-card__detail">{item.detail}</div>
+                  </div>
+                ))}
+              </div>
+              <div ref={chartRef} style={{ flex: 1, minHeight: 420 }} />
+              <div className="ui-shell-grid ui-shell-grid--two" style={{ padding: '0 16px 16px' }}>
+                <div className="ui-callout">
+                  主判读：先看 PV 是否在可接受时间内贴近 SP，再看 OP 是否出现过度拉扯。若超调偏大且 OP 波动强，优先回退到更保守方法。
+                </div>
+                <div className="ui-callout">
+                  现场建议：若模型回退或置信度不高，先小步试投并观察阀位与负荷扰动，再决定是否直接全量替换当前参数。
+                </div>
+              </div>
+            </>
+          ) : null}
         </ChartPanel>
       </div>
     </div>

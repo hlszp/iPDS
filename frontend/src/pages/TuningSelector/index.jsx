@@ -1,72 +1,85 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
+import SortableTable from '../../components/SortableTable';
+import { FilterBar, FilterGroup, Panel, StateBlock } from '../../components/ui';
+
+const TUNING_COLUMNS = [
+  { key: 'tag_name', label: '位号' },
+  { key: 'unit', label: '装置' },
+  { key: 'loop_type', label: '回路类型' },
+  { key: 'description', label: '描述' },
+  {
+    key: 'action',
+    label: '操作',
+    sortable: false,
+    nowrap: true,
+    render: (_, row) => <span style={{ color: 'var(--accent-strong)', fontWeight: 700 }}>进入整定</span>,
+  },
+];
 
 export default function TuningSelector() {
   const [loops, setLoops] = useState([]);
   const [filter, setFilter] = useState('');
   const [unitFilter, setUnitFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const nav = useNavigate();
 
   useEffect(() => {
-    api.listLoops({ limit: 500 }).then(setLoops).catch(() => {});
+    setLoading(true);
+    setError('');
+    api.listLoops({ limit: 500 })
+      .then((items) => setLoops(items || []))
+      .catch((e) => {
+        setLoops([]);
+        setError(e.message || '整定入口加载失败');
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  const units = [...new Set(loops.map(l => l.unit).filter(Boolean))];
-  const filtered = loops.filter(l => {
-    if (unitFilter && l.unit !== unitFilter) return false;
-    if (filter && !l.tag_name.toLowerCase().includes(filter.toLowerCase())) return false;
+  const units = useMemo(() => [...new Set(loops.map((loop) => loop.unit).filter(Boolean))], [loops]);
+  const filtered = useMemo(() => loops.filter((loop) => {
+    if (unitFilter && loop.unit !== unitFilter) return false;
+    if (filter && !loop.tag_name.toLowerCase().includes(filter.toLowerCase())) return false;
     return true;
-  });
+  }), [filter, loops, unitFilter]);
+
+  const rows = filtered.map((loop) => ({ ...loop, action: loop.tag_name }));
 
   return (
-    <div style={{padding:24,height:'100%',overflow:'auto'}}>
-      <h2 style={{color:'#fff',fontSize:'var(--font-xl)',marginBottom:20}}>整定工作台</h2>
-      <p style={{color:'var(--text-dim)',marginBottom:20,fontSize:'var(--font-sm)'}}>选择需要整定的控制回路，进入 PID 参数整定与仿真验证。</p>
-
-      <div style={{display:'flex',gap:12,marginBottom:16}}>
-        <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="搜索位号..."
-          style={{padding:'8px 12px',background:'var(--surface)',color:'#fff',border:'1px solid var(--border)',borderRadius:4,fontSize:'var(--font-md)',width:240}} />
-        <select value={unitFilter} onChange={e=>setUnitFilter(e.target.value)}
-          style={{padding:'8px 12px',background:'var(--surface)',color:'#fff',border:'1px solid var(--border)',borderRadius:4,fontSize:'var(--font-md)'}}>
-          <option value="">全部装置</option>
-          {units.map(u => <option key={u} value={u}>{u}</option>)}
-        </select>
-      </div>
-
-      <table style={{width:'100%',fontSize:'var(--font-sm)',borderCollapse:'collapse'}}>
-        <thead>
-          <tr style={{borderBottom:'1px solid var(--border)'}}>
-            <th style={{textAlign:'left',padding:'10px 8px',color:'var(--text-dim)',fontWeight:500}}>位号</th>
-            <th style={{textAlign:'left',padding:'10px 8px',color:'var(--text-dim)',fontWeight:500}}>装置</th>
-            <th style={{textAlign:'left',padding:'10px 8px',color:'var(--text-dim)',fontWeight:500}}>回路类型</th>
-            <th style={{textAlign:'left',padding:'10px 8px',color:'var(--text-dim)',fontWeight:500}}>描述</th>
-            <th style={{textAlign:'left',padding:'10px 8px',color:'var(--text-dim)',fontWeight:500}}>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map(l => (
-            <tr key={l.tag_name} style={{borderBottom:'1px solid rgba(255,255,255,0.04)',cursor:'pointer'}}
-              onClick={() => nav(`/loop/${l.tag_name}/tuning`)}>
-              <td style={{padding:'10px 8px',color:'#fff',fontWeight:600}}>{l.tag_name}</td>
-              <td style={{padding:'10px 8px',color:'var(--text-dim)'}}>{l.unit}</td>
-              <td style={{padding:'10px 8px',color:'var(--text-dim)'}}>{l.loop_type}</td>
-              <td style={{padding:'10px 8px',color:'var(--text-dim)'}}>{l.description || '—'}</td>
-              <td style={{padding:'10px 8px'}}>
-                <button onClick={e=>{e.stopPropagation();nav(`/loop/${l.tag_name}/tuning`);}}
-                  style={{padding:'4px 12px',background:'var(--accent)',color:'#000',border:'none',borderRadius:4,fontSize:'var(--font-sm)',cursor:'pointer'}}>
-                  整定
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {filtered.length === 0 && (
-        <div style={{padding:40,textAlign:'center',color:'var(--text-dim)'}}>
-          {loops.length === 0 ? '加载中...' : '无匹配回路'}
+    <div className="ui-stack">
+      <Panel
+        title="整定入口清单"
+        subtitle="统一筛选待优化对象，再从主表直接进入 PID 参数整定与闭环仿真。"
+        actions={(
+          <FilterBar align="right">
+            <FilterGroup>
+              <input className="ui-input" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="搜索位号..." />
+              <select className="ui-select" value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)}>
+                <option value="">全部装置</option>
+                {units.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+              </select>
+            </FilterGroup>
+          </FilterBar>
+        )}
+        padded={false}
+      >
+        <div className="ui-panel__body">
+          {error ? (
+            <StateBlock type="error" title="整定入口加载失败" detail={error} />
+          ) : (
+            <SortableTable
+              columns={TUNING_COLUMNS}
+              rows={rows}
+              loading={loading}
+              emptyText={loops.length === 0 ? '当前没有可整定回路' : '无匹配回路'}
+              emptyDetail={loops.length === 0 ? '请先完成回路建模或等待配置同步。' : '请调整筛选条件后重试。'}
+              onRowClick={(row) => nav(`/loop/${row.tag_name}/tuning`, { state: { sourceTitle: '整定工作台', returnLabel: '返回整定入口', returnTo: '/tuning' } })}
+            />
+          )}
         </div>
-      )}
+      </Panel>
     </div>
   );
 }

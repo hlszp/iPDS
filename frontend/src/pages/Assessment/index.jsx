@@ -3,14 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import SortableTable from '../../components/SortableTable';
 import {
+  DataHero,
   FilterBar,
   FilterGroup,
   GradePill,
   LoopListItem,
   MetricCard,
+  PageSection,
   Panel,
+  SectionCaption,
   StateBlock,
-  StatusBanner,
+  WorkbenchRail,
 } from '../../components/ui';
 
 const ASSESS_COLS = [
@@ -27,6 +30,28 @@ const ASSESS_COLS = [
 ];
 
 const GRADE_ORDER = ['优', '良', '中', '差', '开环'];
+
+function AssessmentSkeleton() {
+  return (
+    <div className="ui-stack">
+      <div className="ui-skeleton-hero">
+        <div className="ui-skeleton-block ui-skeleton-block--title" />
+        <div className="ui-skeleton-block ui-skeleton-block--text" />
+        <div className="ui-summary-grid">
+          {Array.from({ length: 4 }).map((_, index) => <div key={index} className="ui-skeleton-card" />)}
+        </div>
+      </div>
+      <div className="ui-skeleton-card" />
+      <div className="ui-page-section ui-page-section--sidebar">
+        <div className="ui-skeleton-card ui-skeleton-card--table" />
+        <div className="ui-stack">
+          <div className="ui-skeleton-card" />
+          <div className="ui-skeleton-card" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Assessment() {
   const nav = useNavigate();
@@ -71,88 +96,96 @@ export default function Assessment() {
   }, [rows]);
 
   const focusLoops = [...rows].sort((a, b) => a.performance_score - b.performance_score).slice(0, 5);
+  const trust = runtime || {};
+
+  if (loading) return <AssessmentSkeleton />;
 
   return (
     <div className="ui-stack">
-      <section className="ui-summary-grid">
+      <DataHero
+        title="性能评估工作台"
+        subtitle="先用统一筛选条锁定风险范围，再在中间主表核查振荡、粘滞、调节时间与投运质量。"
+        aside={(
+          <div className="ui-stack">
+            <SectionCaption kicker="当前重点" title={focusLoops[0]?.tag_name || '暂无重点回路'} detail={focusLoops[0] ? `${focusLoops[0].unit || '未分配装置'} · ${focusLoops[0].grade}` : '等待评估结果返回后生成优先改善对象。'} />
+          </div>
+        )}
+      >
         <MetricCard label="评估回路" value={summary.total} detail="当前筛选范围" />
         <MetricCard label="平均评分" value={summary.avgScore} detail="实时评估均值" />
         <MetricCard label="平均振荡率" value={`${summary.avgOsc}${summary.avgOsc === '—' ? '' : '%'}`} detail="问题稳定性指标" />
         <MetricCard label="平均粘滞系数" value={summary.avgStiction} detail="阀门粘滞风险" />
-      </section>
+      </DataHero>
 
-      <StatusBanner
-        tone={runtime?.degraded ? 'warn' : 'ok'}
-        items={[
-          { label: '配置模式', value: runtime?.configured_source || '—' },
-          { label: '当前生效', value: runtime?.effective_source || '—' },
-          { label: '回路覆盖', value: `${runtime?.served_loop_count ?? 0}/${runtime?.expected_loop_count ?? 0}` },
-        ]}
-        detail={runtime?.fallback_reason || runtime?.detail || '尚未获取运行数据状态。'}
-      />
-
-      <div className="ui-grade-grid">
-        {gradeCards.map((item) => (
-          <GradePill
-            key={item.grade}
-            grade={item.grade}
-            count={item.count}
-            active={gradeFilter === item.grade}
-            onClick={() => setGradeFilter((prev) => (prev === item.grade ? '' : item.grade))}
-          />
-        ))}
-      </div>
-
-      <div className="ui-page-section ui-page-section--sidebar">
-        <Panel
-          title="问题回路评估矩阵"
-          subtitle="先筛出高风险对象，再进入单回路详情核查证据并推进整定。"
-          actions={(
-            <FilterBar align="right">
-              <FilterGroup>
-                <input className="ui-input" type="number" placeholder="振荡率≥" value={minOsc} onChange={(e) => setMinOsc(e.target.value)} />
-                <input className="ui-input" type="number" step="0.01" placeholder="粘滞系数≥" value={minStiction} onChange={(e) => setMinStiction(e.target.value)} />
-                <button type="button" className="ui-secondary-action" onClick={() => { setMinOsc(''); setMinStiction(''); setGradeFilter(''); }}>清空筛选</button>
-              </FilterGroup>
-            </FilterBar>
-          )}
-          padded={false}
-        >
-          <div style={{ padding: '0 18px 18px' }}>
-            {loading ? (
-              <StateBlock type="loading" title="评估结果加载中" detail="正在汇总回路评分、振荡、粘滞与投运指标。" />
-            ) : error ? (
-              <StateBlock type="error" title="评估结果加载失败" detail={error} />
-            ) : (
-              <SortableTable columns={ASSESS_COLS} rows={rows} defaultSort={{ key: 'performance_score', dir: 'asc' }} emptyText="暂无符合筛选条件的回路" onRowClick={(row) => nav(`/assessment/${row.tag_name}`)} />
-            )}
-          </div>
-        </Panel>
-
+      <Panel
+        title="评估筛选与等级分布"
+        subtitle="把等级、振荡阈值和粘滞阈值放在同一条指挥带里，避免像异常页一样散乱堆叠。"
+        actions={(
+          <FilterBar align="right">
+            <FilterGroup>
+              <input className="ui-input" type="number" placeholder="振荡率≥" value={minOsc} onChange={(e) => setMinOsc(e.target.value)} />
+              <input className="ui-input" type="number" step="0.01" placeholder="粘滞系数≥" value={minStiction} onChange={(e) => setMinStiction(e.target.value)} />
+              <button type="button" className="ui-secondary-action" onClick={() => { setMinOsc(''); setMinStiction(''); setGradeFilter(''); }}>清空筛选</button>
+            </FilterGroup>
+          </FilterBar>
+        )}
+      >
         <div className="ui-stack">
-          <Panel title="优先改善回路" subtitle="从发现问题顺畅进入分析问题。">
-            <div className="ui-list">
-              {focusLoops.map((loop) => (
-                <LoopListItem
-                  key={loop.tag_name}
-                  title={loop.tag_name}
-                  meta={`${loop.unit || '未分配装置'} · ${loop.grade}`}
-                  value={loop.performance_score.toFixed(1)}
-                  tone="danger"
-                  onClick={() => nav(`/assessment/${loop.tag_name}`)}
-                />
-              ))}
-            </div>
-          </Panel>
+          <div className="ui-grade-grid">
+            {gradeCards.map((item) => (
+              <GradePill
+                key={item.grade}
+                grade={item.grade}
+                count={item.count}
+                active={gradeFilter === item.grade}
+                onClick={() => setGradeFilter((prev) => (prev === item.grade ? '' : item.grade))}
+              />
+            ))}
+          </div>
+          <SectionCaption kicker="数据范围" title={trust.degraded ? '当前为降级评估' : '当前为实时评估'} detail={trust.fallback_reason || trust.detail || '当前筛选结果来自实时评估数据。'} />
+        </div>
+      </Panel>
 
-          <Panel title="评估使用说明" subtitle="当前页只展示真实评估结果，不生成额外模拟结论。">
-            <div className="ui-text-block">
-              <p>本页用于筛选问题回路并进入单回路诊断详情。</p>
-              <p>如果运行数据源降级，筛选结果仍会明确标注来源状态，不会伪装为真实实时数据。</p>
+      <PageSection columns="sidebar">
+        <div className="ui-stack">
+          <Panel title="问题回路评估矩阵" subtitle="中间主表用于快速确认问题类型与优先级，点击后进入单回路分析。" padded={false}>
+            <div className="ui-panel__body">
+              {error ? (
+                <StateBlock type="error" title="评估结果加载失败" detail={error} />
+              ) : rows.length === 0 ? (
+                <StateBlock type="empty" title="当前筛选下暂无评估结果" detail="这不是系统异常，可能是筛选条件过严，或当前范围内暂无满足条件的回路。" />
+              ) : (
+                <SortableTable
+                  columns={ASSESS_COLS}
+                  rows={rows}
+                  defaultSort={{ key: 'performance_score', dir: 'asc' }}
+                  emptyText="暂无符合筛选条件的回路"
+                  onRowClick={(row) => nav(`/assessment/${row.tag_name}`, { state: { sourceTitle: '性能评估', returnLabel: '返回评估矩阵', returnTo: '/assessment' } })}
+                />
+              )}
             </div>
           </Panel>
         </div>
-      </div>
+
+        <WorkbenchRail title="优先改善回路" subtitle="从发现问题直接进入单回路诊断。">
+          {focusLoops.length > 0 ? focusLoops.map((loop) => (
+            <LoopListItem
+              key={loop.tag_name}
+              title={loop.tag_name}
+              meta={`${loop.unit || '未分配装置'} · ${loop.grade}`}
+              value={loop.performance_score.toFixed(1)}
+              tone="danger"
+              onClick={() => nav(`/assessment/${loop.tag_name}`, { state: { sourceTitle: '优先改善回路', returnLabel: '返回评估矩阵', returnTo: '/assessment' } })}
+            />
+          )) : <StateBlock type="empty" title="当前没有重点回路" detail="请调整筛选条件，或等待评估结果返回。" />}
+          <Panel title="评估使用说明" subtitle="当前页只展示真实评估结果，不生成额外模拟结论。">
+            <div className="ui-text-block">
+              <p>先在这页锁定问题对象，再进入单回路详情查看诊断证据与整定入口。</p>
+              <p>如果运行数据源降级，页面会保留状态说明，但不会伪装为真实生产实时数据。</p>
+            </div>
+          </Panel>
+        </WorkbenchRail>
+      </PageSection>
     </div>
   );
 }

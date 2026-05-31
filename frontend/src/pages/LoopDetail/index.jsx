@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { echarts } from '../../lib/echarts-line';
 import { api } from '../../api/client';
 import {
@@ -7,26 +7,37 @@ import {
   ChartPanel,
   LoopListItem,
   MetricCard,
+  PageSection,
   Panel,
   PrimaryAction,
+  RetryAction,
   StateBlock,
+  StatusBanner,
 } from '../../components/ui';
 
 export default function LoopDetail() {
   const { tagName } = useParams();
   const nav = useNavigate();
+  const location = useLocation();
   const [data, setData] = useState(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    setError(false);
+  const returnTo = location.state?.returnTo || '/assessment';
+  const returnLabel = location.state?.returnLabel || '返回上一步';
+
+  const loadDetail = () => {
+    setError('');
     setData(null);
     api.getLoopDetail(tagName)
       .then((d) => setData(d))
-      .catch(() => setError(true));
+      .catch((e) => setError(e.message || '当前无法读取该回路的诊断证据与运行趋势，请稍后重试。'));
+  };
+
+  useEffect(() => {
+    loadDetail();
   }, [tagName]);
 
-  if (error) return <StateBlock type="error" title="回路数据加载失败" detail="当前无法读取该回路的诊断证据与运行趋势，请稍后重试。" />;
+  if (error) return <StateBlock type="error" title="回路数据加载失败" detail={error} action={<RetryAction onClick={loadDetail}>重试读取</RetryAction>} />;
   if (!data) return <StateBlock type="loading" title="回路详情加载中" detail="正在汇总结论、证据链与历史趋势。" />;
 
   const info = data.loop_info || {};
@@ -38,37 +49,42 @@ export default function LoopDetail() {
         subtitle={`${info.unit || '未分配装置'} · ${info.description || info.loop_type || '单回路诊断详情'}`}
         actions={(
           <>
-            <BackAction onClick={() => nav('/')}>返回驾驶舱</BackAction>
-            <PrimaryAction onClick={() => nav(`/loop/${tagName}/tuning`)}>进入 PID 整定</PrimaryAction>
+            <BackAction onClick={() => nav(returnTo)}>{returnLabel}</BackAction>
+            <PrimaryAction onClick={() => nav(`/loop/${tagName}/tuning`, { state: { sourceTitle: '回路详情', returnLabel: '返回回路详情', returnTo: `/loop/${tagName}` } })}>进入 PID 整定</PrimaryAction>
           </>
         )}
       >
-        <div className="ui-card-grid">
-          <MetricCard label="自控率" value={data.assessment?.self_control_rate != null ? `${data.assessment.self_control_rate.toFixed(1)}%` : '—'} detail="当前窗口内控制器闭环投入情况" />
-          <MetricCard label="平稳率" value={data.assessment?.stability_rate != null ? `${data.assessment.stability_rate.toFixed(1)}%` : '—'} detail="当前工况下波动是否受控" />
-          <MetricCard label="性能评分" value={data.assessment?.performance_score != null ? data.assessment.performance_score.toFixed(1) : '—'} detail="综合评估得分" />
-          <MetricCard label="当前评级" value={data.assessment?.grade || '—'} detail="用于判断后续处理优先级" />
+        <div className="ui-stack">
+          <div className="ui-card-grid">
+            <MetricCard label="自控率" value={data.assessment?.self_control_rate != null ? `${data.assessment.self_control_rate.toFixed(1)}%` : '—'} detail="当前窗口内控制器闭环投入情况" />
+            <MetricCard label="平稳率" value={data.assessment?.stability_rate != null ? `${data.assessment.stability_rate.toFixed(1)}%` : '—'} detail="当前工况下波动是否受控" />
+            <MetricCard label="性能评分" value={data.assessment?.performance_score != null ? data.assessment.performance_score.toFixed(1) : '—'} detail="综合评估得分" />
+            <MetricCard label="当前评级" value={data.assessment?.grade || '—'} detail="用于判断后续处理优先级" />
+          </div>
+          <StatusBanner tone="neutral" items={[{ label: '回路位号', value: info.tag_name || '—' }, { label: '装置', value: info.unit || '—' }, { label: '采样周期', value: `${info.sample_interval || '—'}s` }]} detail="先确认对象、量程和采样条件，再解读趋势与诊断结论。" />
         </div>
       </Panel>
 
-      <div className="ui-shell-grid ui-shell-grid--two">
-        <DiagnosisCard diagnosis={data.diagnosis} />
-        <Panel title="回路信息" subtitle="先确认对象、量程和采样条件，再解读趋势与诊断结论。">
-          <div className="ui-key-value">
-            <div>位号: <strong>{info.tag_name || '—'}</strong></div>
-            <div>装置: <strong>{info.unit || '—'}{info.sub_unit ? ` / ${info.sub_unit}` : ''}</strong></div>
-            <div>描述: <strong>{info.description || '—'}</strong></div>
-            <div>PV / SP / OP: <strong>{info.pv_tag || '—'} / {info.sp_tag || '—'} / {info.op_tag || '—'}</strong></div>
-            <div>量程: <strong>{info.pv_lo != null && info.pv_hi != null ? `${info.pv_lo}–${info.pv_hi} ${info.eng_unit || ''}` : '—'}</strong></div>
-            <div>采样周期: <strong>{info.sample_interval || '—'}s</strong> · 死区时间: <strong>{info.dead_time_typical != null ? `~${info.dead_time_typical}s` : '—'}</strong></div>
-          </div>
-        </Panel>
-      </div>
+      <PageSection columns="sidebar">
+        <div className="ui-stack">
+          <DiagnosisCard diagnosis={data.diagnosis} />
+          <Panel title="回路信息" subtitle="对象、量程与信号绑定。">
+            <div className="ui-key-value">
+              <div>位号: <strong>{info.tag_name || '—'}</strong></div>
+              <div>装置: <strong>{info.unit || '—'}{info.sub_unit ? ` / ${info.sub_unit}` : ''}</strong></div>
+              <div>描述: <strong>{info.description || '—'}</strong></div>
+              <div>PV / SP / OP: <strong>{info.pv_tag || '—'} / {info.sp_tag || '—'} / {info.op_tag || '—'}</strong></div>
+              <div>量程: <strong>{info.pv_lo != null && info.pv_hi != null ? `${info.pv_lo}–${info.pv_hi} ${info.eng_unit || ''}` : '—'}</strong></div>
+              <div>采样周期: <strong>{info.sample_interval || '—'}s</strong> · 死区时间: <strong>{info.dead_time_typical != null ? `~${info.dead_time_typical}s` : '—'}</strong></div>
+            </div>
+          </Panel>
+        </div>
 
-      <div className="ui-shell-grid ui-shell-grid--two">
-        <TrendPanel trend={data.trend} title="近 3 小时趋势" />
-        <HistoryPlaybackPanel tagName={tagName} />
-      </div>
+        <div className="ui-stack">
+          <TrendPanel trend={data.trend} title="近 3 小时趋势" />
+          <HistoryPlaybackPanel tagName={tagName} />
+        </div>
+      </PageSection>
     </div>
   );
 }

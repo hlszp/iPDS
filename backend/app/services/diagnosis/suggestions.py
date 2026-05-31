@@ -82,8 +82,8 @@ SUGGESTION_MAP = {
 
 def get_suggestions(primary_fault: str, confidence: float) -> dict:
     """Return diagnosis suggestions for a loop based on primary fault type."""
-    key = (primary_fault, "high") if confidence >= 0.5 else (primary_fault, "low")
-    entry = SUGGESTION_MAP.get(key)
+    severity = "high" if confidence >= 0.5 else "low"
+    entry = SUGGESTION_MAP.get((primary_fault, severity)) or SUGGESTION_MAP.get((primary_fault, "high"))
     if not entry:
         return {
             "title": "无明显故障",

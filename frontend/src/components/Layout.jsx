@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, matchPath } from 'react-router-dom';
 import { api } from '../api/client';
-import { StatusBanner } from './ui';
+import { RetryAction, StateBlock, StatusBanner } from './ui';
 import styles from './Layout.module.css';
 
 const NAV_GROUPS = [
@@ -65,6 +65,18 @@ function getRuntimeTone(runtime) {
   return runtime.degraded ? 'warn' : 'ok';
 }
 
+function getReturnContext(location) {
+  const sourceTitle = location.state?.sourceTitle;
+  const returnLabel = location.state?.returnLabel;
+  const returnTo = location.state?.returnTo;
+  if (!sourceTitle && !returnLabel && !returnTo) return null;
+  return {
+    sourceTitle: sourceTitle || '上一步',
+    returnLabel: returnLabel || '返回上一页',
+    returnTo,
+  };
+}
+
 export default function Layout({ user, onLogout, children }) {
   const location = useLocation();
   const [treeData, setTreeData] = useState([]);
@@ -72,24 +84,84 @@ export default function Layout({ user, onLogout, children }) {
   const [loadingPlants, setLoadingPlants] = useState({});
   const [runtimeSource, setRuntimeSource] = useState(null);
   const [features, setFeatures] = useState([]);
+  const [treeStatus, setTreeStatus] = useState('loading');
+  const [runtimeStatus, setRuntimeStatus] = useState('loading');
+  const [featureStatus, setFeatureStatus] = useState('loading');
   const page = useMemo(() => getPageMeta(location.pathname), [location.pathname]);
+  const returnContext = useMemo(() => getReturnContext(location), [location]);
+
+  const loadPlantTree = async () => {
+    setTreeStatus('loading');
+    try {
+      const data = await api.getPlantTree();
+      setTreeData(data.plants || []);
+      setTreeStatus('ready');
+    } catch {
+      setTreeData([]);
+      setTreeStatus('error');
+    }
+  };
+
+  const loadRuntimeSource = async () => {
+    setRuntimeStatus('loading');
+    try {
+      const data = await api.getRuntimeSource();
+      setRuntimeSource(data);
+      setRuntimeStatus('ready');
+    } catch {
+      setRuntimeSource(null);
+      setRuntimeStatus('error');
+    }
+  };
+
+  const loadFeatures = async () => {
+    setFeatureStatus('loading');
+    try {
+      const items = await api.listFeatures();
+      setFeatures(items || []);
+      setFeatureStatus('ready');
+    } catch {
+      setFeatures([]);
+      setFeatureStatus('error');
+    }
+  };
 
   useEffect(() => {
-    api.getPlantTree()
-      .then((data) => setTreeData(data.plants || []))
-      .catch(() => setTreeData([]));
-
-    api.getRuntimeSource()
-      .then(setRuntimeSource)
-      .catch(() => setRuntimeSource(null));
-
-    api.listFeatures()
-      .then((items) => setFeatures(items || []))
-      .catch(() => setFeatures([]));
+    loadPlantTree();
+    loadRuntimeSource();
+    loadFeatures();
   }, []);
 
   const enabledFeatures = features.filter((item) => item.enabled).length;
   const runtimeTone = getRuntimeTone(runtimeSource);
+  const routeContext = useMemo(() => {
+    const loopMatch = matchPath('/loop/:tagName/*', location.pathname) || matchPath('/loop/:tagName', location.pathname);
+    if (!loopMatch?.params?.tagName) return { tagName: null, pageType: null };
+    return {
+      tagName: loopMatch.params.tagName,
+      pageType: location.pathname.endsWith('/tuning') ? 'tuning' : 'loop',
+    };
+  }, [location.pathname]);
+
+  const activeTree = useMemo(() => {
+    if (!routeContext.tagName) return {};
+    for (const plant of treeData) {
+      for (const device of plant.devices || []) {
+        for (const group of device.loop_groups || []) {
+          const loop = (group.loops || []).find((item) => item.tag_name === routeContext.tagName);
+          if (loop) {
+            return {
+              plantId: plant.id,
+              deviceId: device.id,
+              groupId: group.id,
+              tagName: loop.tag_name,
+            };
+          }
+        }
+      }
+    }
+    return { tagName: routeContext.tagName };
+  }, [routeContext.tagName, treeData]);
 
   const togglePlant = async (plantId) => {
     const key = `p-${plantId}`;
@@ -108,6 +180,16 @@ export default function Layout({ user, onLogout, children }) {
       setLoadingPlants((prev) => ({ ...prev, [plantId]: false }));
     }
   };
+
+  useEffect(() => {
+    if (!activeTree.plantId) return;
+    setExpanded((prev) => ({
+      ...prev,
+      [`p-${activeTree.plantId}`]: true,
+      [`d-${activeTree.deviceId}`]: true,
+      [`g-${activeTree.groupId}`]: true,
+    }));
+  }, [activeTree]);
 
   const toggle = (key) => setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
 
@@ -143,22 +225,32 @@ export default function Layout({ user, onLogout, children }) {
           <div className={styles.navSection}>
             <div className={styles.navSectionTitle}>装置回路树</div>
             <div className={styles.tree}>
-              {treeData.map((plant) => (
+              {treeStatus === 'loading' ? <div className={styles.treeLoading}>正在读取装置回路树...</div> : null}
+              {treeStatus === 'error' ? (
+                <StateBlock
+                  compact
+                  type="error"
+                  title="装置回路树加载失败"
+                  detail="当前无法读取装置层级，请重试后再进入单回路详情。"
+                  action={<RetryAction onClick={loadPlantTree}>重试读取</RetryAction>}
+                />
+              ) : null}
+              {treeStatus === 'ready' ? treeData.map((plant) => (
                 <div key={`p-${plant.id}`} className={styles.treeUnit}>
-                  <div className={styles.treeUnitName} onClick={() => togglePlant(plant.id)}>
+                  <div className={`${styles.treeUnitName} ${activeTree.plantId === plant.id ? styles.treeUnitActive : ''}`.trim()} onClick={() => togglePlant(plant.id)}>
                     <span className={styles.treeCaret}>{expanded[`p-${plant.id}`] ? '▼' : '▶'}</span>
                     {plant.name}
                   </div>
                   {expanded[`p-${plant.id}`] ? (
-                    loadingPlants[plant.id] ? <div className={styles.treeEmpty}>加载中...</div> : plant.devices.map((device) => (
+                    loadingPlants[plant.id] ? <div className={styles.treeLoading}>加载中...</div> : plant.devices.map((device) => (
                       <div key={`d-${device.id}`} className={styles.treeGroup}>
-                        <div className={styles.treeGroupName} onClick={() => toggle(`d-${device.id}`)}>
+                        <div className={`${styles.treeGroupName} ${activeTree.deviceId === device.id ? styles.treeGroupActive : ''}`.trim()} onClick={() => toggle(`d-${device.id}`)}>
                           <span className={styles.treeCaret}>{expanded[`d-${device.id}`] ? '▼' : '▶'}</span>
                           {device.name}
                         </div>
                         {(expanded[`d-${device.id}`] || plant.devices.length <= 1) && device.loop_groups.map((grp) => (
                           <div key={`g-${grp.id}`} className={styles.treeSubGroup}>
-                            <div className={styles.treeSubGroupName} onClick={() => toggle(`g-${grp.id}`)}>
+                            <div className={`${styles.treeSubGroupName} ${activeTree.groupId === grp.id ? styles.treeSubGroupActive : ''}`.trim()} onClick={() => toggle(`g-${grp.id}`)}>
                               <span className={styles.treeCaret}>{expanded[`g-${grp.id}`] ? '▼' : '▶'}</span>
                               {grp.name}
                             </div>
@@ -166,7 +258,8 @@ export default function Layout({ user, onLogout, children }) {
                               <NavLink
                                 key={loop.tag_name}
                                 to={`/loop/${loop.tag_name}`}
-                                className={({ isActive }) => `${styles.treeLoop} ${isActive ? styles.treeLoopActive : ''}`}
+                                state={{ sourceTitle: page.title, returnLabel: '返回当前流程页', returnTo: location.pathname }}
+                                className={({ isActive }) => `${styles.treeLoop} ${isActive ? styles.treeLoopActive : ''} ${activeTree.tagName === loop.tag_name ? styles.treeLoopCurrent : ''}`.trim()}
                               >
                                 {loop.tag_name}
                               </NavLink>
@@ -177,8 +270,8 @@ export default function Layout({ user, onLogout, children }) {
                     ))
                   ) : null}
                 </div>
-              ))}
-              {treeData.length === 0 && <div className={styles.treeEmpty}>暂无数据</div>}
+              )) : null}
+              {treeStatus === 'ready' && treeData.length === 0 ? <div className={styles.treeEmpty}>尚未配置装置层级</div> : null}
             </div>
           </div>
         </nav>
@@ -199,22 +292,29 @@ export default function Layout({ user, onLogout, children }) {
             <div className={styles.pageKicker}>{page.kicker}</div>
             <h1 className={styles.pageTitle}>{page.title}</h1>
             <p className={styles.pageSubtitle}>{page.subtitle}</p>
+            {returnContext ? <div className={styles.pageContext}>来源：{returnContext.sourceTitle} · {returnContext.returnLabel}</div> : null}
           </div>
           <div className={styles.topActions}>
             <div className={`${styles.trustPill} ${styles[runtimeTone]}`}>
               <span className={styles.trustDot} />
-              <span>{runtimeSource?.degraded ? '已降级运行' : '运行数据正常'}</span>
+              <span>
+                {runtimeStatus === 'error'
+                  ? '运行状态待重试'
+                  : runtimeSource?.degraded
+                    ? '运行已降级'
+                    : '运行数据正常'}
+              </span>
             </div>
             <div className={styles.metaCard}>
               <div className={styles.metaLabel}>当前生效</div>
-              <div className={styles.metaValue}>{runtimeSource?.effective_source || '—'}</div>
+              <div className={styles.metaValue}>{runtimeStatus === 'error' ? '异常' : runtimeSource?.effective_source || '—'}</div>
               <div className={styles.metaDetail}>
                 {runtimeSource?.served_loop_count ?? 0}/{runtimeSource?.expected_loop_count ?? 0} 回路
               </div>
             </div>
             <div className={styles.metaCard}>
               <div className={styles.metaLabel}>功能模块</div>
-              <div className={styles.metaValue}>{enabledFeatures}/{features.length || 0}</div>
+              <div className={styles.metaValue}>{featureStatus === 'error' ? '—' : `${enabledFeatures}/${features.length || 0}`}</div>
               <div className={styles.metaDetail}>已启用能力</div>
             </div>
           </div>
@@ -222,13 +322,15 @@ export default function Layout({ user, onLogout, children }) {
 
         <section className={styles.runtimeBar}>
           <StatusBanner
-            tone={runtimeTone}
+            compact
+            tone={runtimeStatus === 'error' ? 'danger' : runtimeTone}
             items={[
               { label: '配置模式', value: runtimeSource?.configured_source || '—' },
               { label: '当前生效', value: runtimeSource?.effective_source || '—' },
               { label: '回路覆盖', value: `${runtimeSource?.served_loop_count ?? 0}/${runtimeSource?.expected_loop_count ?? 0}` },
             ]}
-            detail={runtimeSource?.fallback_reason || runtimeSource?.detail || '尚未读取运行数据源状态'}
+            detail={runtimeStatus === 'error' ? '运行时数据源状态读取失败，请重试。' : runtimeSource?.fallback_reason || runtimeSource?.detail || '尚未读取运行数据源状态'}
+            actions={runtimeStatus === 'error' ? <RetryAction onClick={loadRuntimeSource}>重试读取</RetryAction> : null}
           />
         </section>
 
