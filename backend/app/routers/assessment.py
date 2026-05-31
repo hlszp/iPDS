@@ -129,25 +129,27 @@ def get_loop_suggestions(tag_name: str):
     diag = diagnose_loop(tag_name, ld.pv, ld.sp, ld.op,
                          sample_interval=float(ld.config.sample_interval))
 
+    fault_confidence = round(max(
+        diag.stiction_confidence if diag.stiction_detected else 0,
+        diag.oscillation_confidence if diag.oscillation_detected else 0,
+        diag.nonlinearity_degree if diag.nonlinearity_detected else 0,
+        diag.coupling_strength if diag.coupling_candidates else 0,
+    ), 3)
+
     return {
         "tag_name": tag_name,
         "primary_fault": diag.primary_fault,
-        "fault_confidence": round(max(
-            diag.stiction_confidence if diag.stiction_detected else 0,
-            diag.oscillation_confidence if diag.oscillation_detected else 0,
-            diag.nonlinearity_degree if diag.nonlinearity_detected else 0,
-            diag.coupling_strength if diag.coupling_candidates else 0,
-        ), 3),
-        "suggestion": get_suggestions(diag.primary_fault, diag.stiction_confidence),
+        "fault_confidence": float(fault_confidence),
+        "suggestion": get_suggestions(diag.primary_fault, fault_confidence),
         "details": {
-            "stiction_detected": diag.stiction_detected,
-            "stiction_confidence": diag.stiction_confidence,
-            "oscillation_detected": diag.oscillation_detected,
-            "oscillation_confidence": diag.oscillation_confidence,
-            "oscillation_period": diag.oscillation_period,
-            "nonlinearity_detected": diag.nonlinearity_detected,
-            "nonlinearity_degree": diag.nonlinearity_degree,
-            "coupling_candidates": diag.coupling_candidates,
-            "coupling_strength": diag.coupling_strength,
+            "stiction_detected": bool(diag.stiction_detected),
+            "stiction_confidence": float(diag.stiction_confidence),
+            "oscillation_detected": bool(diag.oscillation_detected),
+            "oscillation_confidence": float(diag.oscillation_confidence),
+            "oscillation_period": float(diag.oscillation_period) if diag.oscillation_period is not None else None,
+            "nonlinearity_detected": bool(diag.nonlinearity_detected),
+            "nonlinearity_degree": float(diag.nonlinearity_degree),
+            "coupling_candidates": list(diag.coupling_candidates or []),
+            "coupling_strength": float(diag.coupling_strength),
         },
     }

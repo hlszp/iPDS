@@ -22,6 +22,21 @@ from ..services.simulation.engine import SimulationResult
 from ..services.tuning.engine import PIDParams
 
 
+def _to_json_compatible(value):
+    if isinstance(value, dict):
+        return {key: _to_json_compatible(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_to_json_compatible(item) for item in value]
+    if isinstance(value, tuple):
+        return [_to_json_compatible(item) for item in value]
+    if hasattr(value, "item") and callable(value.item):
+        try:
+            return _to_json_compatible(value.item())
+        except (ValueError, TypeError):
+            pass
+    return value
+
+
 def persist_assessment_snapshot(
     db: Session,
     loop_tag_id: int,
@@ -37,7 +52,7 @@ def persist_assessment_snapshot(
         performance_score=assessment.performance_score,
         grade=assessment.grade,
         engine_version="v1",
-        metrics_json={
+        metrics_json=_to_json_compatible({
             "tag_name": assessment.tag_name,
             "unit": assessment.unit,
             "self_control_rate": assessment.self_control_rate,
@@ -52,7 +67,7 @@ def persist_assessment_snapshot(
             "operation_frequency": assessment.operation_frequency,
             "nonlinearity_degree": assessment.nonlinearity_degree,
             "reference_time": assessment.reference_time,
-        },
+        }),
     )
     db.add(row)
     db.flush()
@@ -79,7 +94,7 @@ def persist_diagnosis_snapshot(
         window_end=window_end,
         primary_fault=diagnosis.primary_fault,
         confidence=confidence,
-        details_json={
+        details_json=_to_json_compatible({
             "stiction_detected": diagnosis.stiction_detected,
             "stiction_confidence": diagnosis.stiction_confidence,
             "oscillation_detected": diagnosis.oscillation_detected,
@@ -92,7 +107,7 @@ def persist_diagnosis_snapshot(
             "settling_time": diagnosis.settling_time,
             "travel_index": diagnosis.travel_index,
             "good_rate": diagnosis.good_rate,
-        },
+        }),
     )
     db.add(row)
     db.flush()
@@ -116,12 +131,12 @@ def persist_identification_snapshot(
         tau=float(model.tau),
         dead_time=float(model.dead_time),
         r_squared=float(model.r_squared),
-        details_json={
+        details_json=_to_json_compatible({
             "method": model.method,
             "excitation_index": float(identification.excitation_index),
             "excitation_sufficient": bool(identification.excitation_sufficient),
             "fallback_reason": identification.fallback_reason,
-        },
+        }),
     )
     db.add(row)
     db.flush()

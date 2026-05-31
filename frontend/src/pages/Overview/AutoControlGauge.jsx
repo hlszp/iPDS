@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import * as echarts from 'echarts';
+import { echarts } from '../../lib/echarts-gauge';
 
 export default function AutoControlGauge({ value = 0, autoLoops = 0, manualLoops = 0 }) {
   const chartRef = useRef(null);

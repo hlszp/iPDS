@@ -1,4 +1,7 @@
 const BASE = '/api';
+const responseCache = new Map();
+const timedCache = new Map();
+const TTL_10_SECONDS = 10_000;
 
 async function parseError(res) {
   try {
@@ -29,6 +32,47 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+function clearCache(keys = []) {
+  keys.forEach((key) => {
+    responseCache.delete(key);
+    timedCache.delete(key);
+  });
+}
+
+function cachedRequest(key, loader) {
+  const hit = responseCache.get(key);
+  if (hit) return hit;
+  const pending = loader()
+    .then((data) => {
+      responseCache.set(key, Promise.resolve(data));
+      return data;
+    })
+    .catch((error) => {
+      responseCache.delete(key);
+      throw error;
+    });
+  responseCache.set(key, pending);
+  return pending;
+}
+
+function cachedRequestWithTtl(key, ttlMs, loader) {
+  const now = Date.now();
+  const hit = timedCache.get(key);
+  if (hit && hit.expiresAt > now) return hit.value;
+  const pending = loader()
+    .then((data) => {
+      const value = Promise.resolve(data);
+      timedCache.set(key, { value, expiresAt: Date.now() + ttlMs });
+      return data;
+    })
+    .catch((error) => {
+      timedCache.delete(key);
+      throw error;
+    });
+  timedCache.set(key, { value: pending, expiresAt: now + ttlMs });
+  return pending;
+}
+
 async function requestFile(path, options = {}) {
   const token = localStorage.getItem('pds_token');
   const headers = { ...options.headers };
@@ -46,7 +90,13 @@ export const api = {
   listUsers: () => request('/auth/users'),
 
   // Config
-  listLoops: (params = {}) => request(withQuery('/config/loops', params)),
+  listLoops: (params = {}) => {
+    const query = withQuery('/config/loops', params);
+    const useTtlCache = params.limit === 500 && Object.keys(params).every((key) => ['limit', 'unit'].includes(key));
+    return useTtlCache
+      ? cachedRequestWithTtl(`config-loops:${query}`, TTL_10_SECONDS, () => request(query))
+      : request(query);
+  },
   getLoop: (tag) => request(`/config/loops/${tag}`),
   createLoop: (data) => request('/config/loops', { method: 'POST', body: JSON.stringify(data) }),
   updateLoop: (tag, data) => request(`/config/loops/${tag}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -76,15 +126,20 @@ export const api = {
   getCommissioningReadiness: (unit) => request(withQuery('/commissioning/readiness', { unit })),
 
   // Features
-  listFeatures: () => request('/features'),
-  updateFeature: (key, enabled) => request(`/features/${key}?enabled=${enabled}`, { method: 'PUT' }),
+  listFeatures: () => cachedRequest('features', () => request('/features')),
+  updateFeature: async (key, enabled) => {
+    const result = await request(`/features/${key}?enabled=${enabled}`, { method: 'PUT' });
+    clearCache(['features']);
+    return result;
+  },
 
   // Reports
   generateLoopReport: (tag) => requestFile(`/reports/loop/${tag}`),
   generateBatchReport: (unit, period) => requestFile(`/reports/batch?unit=${encodeURIComponent(unit || '全厂')}&period=${encodeURIComponent(period || '日报')}`),
 
   // Plant & Device hierarchy
-  getPlantTree: () => request('/plants/tree'),
+  getPlantTree: () => cachedRequest('plant-tree', () => request('/plants/tree')),
+  getPlantSubtree: (plantId) => request(`/plants/${plantId}/tree`),
   listPlants: () => request('/plants'),
   createPlant: (data) => request('/plants', { method: 'POST', body: JSON.stringify(data) }),
   updatePlant: (id, data) => request(`/plants/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -95,17 +150,21 @@ export const api = {
   deleteDevice: (id) => request(`/devices/${id}`, { method: 'DELETE' }),
 
   // Runtime source
-  getRuntimeSource: () => request('/production/runtime-source'),
-  updateRuntimeSource: (source) => request('/production/runtime-source', { method: 'PUT', body: JSON.stringify({ source }) }),
+  getRuntimeSource: () => cachedRequest('runtime-source', () => request('/production/runtime-source')),
+  updateRuntimeSource: async (source) => {
+    const result = await request('/production/runtime-source', { method: 'PUT', body: JSON.stringify({ source }) });
+    clearCache(['runtime-source']);
+    return result;
+  },
   validateRuntimeSource: () => request('/production/runtime-source/validate', { method: 'POST' }),
 
   // Overview & Monitoring
   getOverview: (params = {}) => request(withQuery('/overview/summary', params)),
-  getMonitoringRealtime: (params = {}) => request(withQuery('/monitoring/realtime', params)),
-  getMonitoringHistory: (params = {}) => request(withQuery('/monitoring/history', params)),
+  getMonitoringRealtime: (params = {}) => cachedRequestWithTtl(`monitoring-realtime:${JSON.stringify(params)}`, TTL_10_SECONDS, () => request(withQuery('/monitoring/realtime', params))),
+  getMonitoringHistory: (params = {}) => cachedRequestWithTtl(`monitoring-history:${JSON.stringify(params)}`, TTL_10_SECONDS, () => request(withQuery('/monitoring/history', params))),
 
   // Assessment
-  getAssessmentRealtime: (params = {}) => request(withQuery('/assessment/realtime', params)),
+  getAssessmentRealtime: (params = {}) => cachedRequestWithTtl(`assessment-realtime:${JSON.stringify(params)}`, TTL_10_SECONDS, () => request(withQuery('/assessment/realtime', params))),
   getRadar: (tag) => request(`/assessment/${tag}/radar`),
   getSuggestions: (tag) => request(`/assessment/${tag}/suggestions`),
 
